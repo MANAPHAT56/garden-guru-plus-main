@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Building2, Eye, LockKeyhole, RotateCcw, ShieldCheck, UserRoundCog, Users } from "lucide-react";
+import { Building2, Eye, LockKeyhole, Pencil, RotateCcw, ShieldCheck, UserRoundCog, Users } from "lucide-react";
 import { useState } from "react";
 import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
+import { organizationPermissionOptions, type OrganizationRole } from "@/lib/dragonfly-data";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -16,10 +17,14 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const navigate = useNavigate();
-  const { mode, isDemoMode, persona, personas, state, resetDemo, setPersona, addOrganizationRole } = useDragonflyData();
+  const { mode, isDemoMode, persona, personas, state, resetDemo, setPersona, addOrganizationRole, updateOrganizationRole } = useDragonflyData();
   const [requestMessage, setRequestMessage] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>(["ดูงานทีม"]);
+  const [newRoleScope, setNewRoleScope] = useState<OrganizationRole["scope"]>("assigned_team");
+  const [editingRoleId, setEditingRoleId] = useState("");
+  const [editRolePermissions, setEditRolePermissions] = useState<string[]>([]);
+  const [editRoleScope, setEditRoleScope] = useState<OrganizationRole["scope"]>("assigned_team");
   const isAdmin = persona.id === "owner" || persona.id === "commercial" || persona.id === "export";
   const role = getRoleProfile(persona.id);
   const switchView = (personaId: typeof persona.id) => {
@@ -70,11 +75,22 @@ function SettingsPage() {
       {isAdmin ? <>
         <SectionTitle>Role ขององค์กร</SectionTitle>
         <Card className="space-y-3">
-          <p className="text-xs text-muted-foreground">Owner/Admin กำหนด role ให้เหมาะกับโครงสร้างองค์กรได้ เช่น เจ้าหน้าที่ QA, ผู้ดูแลคลัง, ผู้ประสานงานเก็บเกี่ยว โดยไม่ต้องใช้ role ของระบบเพียงอย่างเดียว</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">ระบบเตรียม Role มาตรฐานให้แล้ว องค์กรแก้สิทธิ์และขอบเขตได้ หรือสร้าง Role เพิ่ม เช่น ผู้ดูแลคลัง และผู้ประสานงานเก็บเกี่ยว โดย Role กำหนดว่า “ทำอะไรได้” ส่วนฟาร์ม/ทีมที่มอบหมายกำหนดว่า “ทำกับข้อมูลชุดไหนได้”</p>
+          <div className="space-y-2 border-y border-border py-3">
+            {state.organizationRoles.map((organizationRole) => {
+              const isEditing = editingRoleId === organizationRole.id;
+              return <div key={organizationRole.id} className="rounded-lg border border-border bg-muted/35 px-3 py-3">
+                <div className="flex items-start justify-between gap-2"><div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold">{organizationRole.name}</p>{organizationRole.builtIn ? <Badge tone="info">ค่าเริ่มต้น</Badge> : <Badge>กำหนดเอง</Badge>}</div><p className="mt-1 text-[11px] text-muted-foreground">ขอบเขต: {roleScopeLabel(organizationRole.scope)} · {organizationRole.permissions.length} สิทธิ์</p></div><button type="button" aria-label={`แก้สิทธิ์ ${organizationRole.name}`} onClick={() => { if (isEditing) { setEditingRoleId(""); return; } setEditingRoleId(organizationRole.id); setEditRolePermissions(organizationRole.permissions); setEditRoleScope(organizationRole.scope); }} className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card"><Pencil className="size-3.5" /></button></div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{organizationRole.permissions.join(" · ")}</p>
+                {isEditing ? <div className="mt-3 space-y-3 border-t border-border pt-3"><label className="block text-xs font-semibold text-muted-foreground">ขอบเขตข้อมูล<select value={editRoleScope} onChange={(event) => setEditRoleScope(event.target.value as OrganizationRole["scope"])} className="mt-1.5 block w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"><RoleScopeOptions /></select></label><PermissionGrid value={editRolePermissions} onChange={setEditRolePermissions} /><button type="button" onClick={() => { const result = updateOrganizationRole(organizationRole.id, { permissions: editRolePermissions, scope: editRoleScope }); setRequestMessage(result.ok ? `บันทึกสิทธิ์ของ “${organizationRole.name}” แล้ว` : result.reason); if (result.ok) setEditingRoleId(""); }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">บันทึกสิทธิ์และขอบเขต</button></div> : null}
+              </div>;
+            })}
+          </div>
+          <p className="text-xs font-semibold">สร้าง Role เพิ่ม</p>
           <input value={newRoleName} onChange={(event) => setNewRoleName(event.target.value)} placeholder="ชื่อ role เช่น เจ้าหน้าที่ QA" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
-          <div className="grid grid-cols-2 gap-2">{["ดูงานทีม", "สร้างและมอบหมายงาน", "ดูต้นทุนและรายได้", "อนุมัติปิดงาน", "ดู Traceability/QA", "จัดการสมาชิก"].map((permission) => <label key={permission} className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs"><input type="checkbox" checked={newRolePermissions.includes(permission)} onChange={(event) => setNewRolePermissions((current) => event.target.checked ? [...current, permission] : current.filter((item) => item !== permission))} />{permission}</label>)}</div>
-          <button onClick={() => { if (persona.subscription !== "Farm Pro") { setRequestMessage("Custom role ใช้ได้ใน Farm Pro เพื่อควบคุมสิทธิ์ระดับองค์กร"); return; } const result = addOrganizationRole(newRoleName, newRolePermissions); setRequestMessage(result.ok ? `สร้าง role “${result.role.name}” แล้ว ใช้เลือกตอนเชิญสมาชิกได้` : result.reason); if (result.ok) { setNewRoleName(""); setNewRolePermissions(["ดูงานทีม"]); } }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">สร้าง Role ขององค์กร</button>
-          {state.organizationRoles.length ? <div className="space-y-2 border-t border-border pt-3">{state.organizationRoles.map((organizationRole) => <div key={organizationRole.id} className="rounded-lg bg-muted/60 px-3 py-2"><p className="text-xs font-semibold">{organizationRole.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{organizationRole.permissions.join(" · ")}</p></div>)}</div> : null}
+          <label className="block text-xs font-semibold text-muted-foreground">ขอบเขตข้อมูล<select value={newRoleScope} onChange={(event) => setNewRoleScope(event.target.value as OrganizationRole["scope"])} className="mt-1.5 block w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"><RoleScopeOptions /></select></label>
+          <PermissionGrid value={newRolePermissions} onChange={setNewRolePermissions} />
+          <button onClick={() => { if (persona.subscription !== "Farm Pro") { setRequestMessage("Custom role ใช้ได้ใน Farm Pro เพื่อควบคุมสิทธิ์ระดับองค์กร"); return; } const result = addOrganizationRole(newRoleName, newRolePermissions, newRoleScope); setRequestMessage(result.ok ? `สร้าง role “${result.role.name}” แล้ว ใช้เลือกตอนเชิญสมาชิกได้` : result.reason); if (result.ok) { setNewRoleName(""); setNewRolePermissions(["ดูงานทีม"]); setNewRoleScope("assigned_team"); } }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">สร้าง Role ขององค์กร</button>
         </Card>
       </> : null}
 
@@ -107,6 +123,18 @@ function SettingsPage() {
       ) : null}
     </AppShell>
   );
+}
+
+function PermissionGrid({ value, onChange }: { value: string[]; onChange: (permissions: string[]) => void }) {
+  return <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{organizationPermissionOptions.map((permission) => <label key={permission} className="flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs"><input type="checkbox" checked={value.includes(permission)} onChange={(event) => onChange(event.target.checked ? [...value, permission] : value.filter((item) => item !== permission))} />{permission}</label>)}</div>;
+}
+
+function RoleScopeOptions() {
+  return <><option value="organization">ทั้งองค์กร</option><option value="assigned_farms">เฉพาะฟาร์มที่ได้รับมอบหมาย</option><option value="assigned_team">เฉพาะทีมของตนเอง</option><option value="own_tasks">เฉพาะงานของตนเอง</option></>;
+}
+
+function roleScopeLabel(scope: OrganizationRole["scope"]) {
+  return ({ organization: "ทั้งองค์กร", assigned_farms: "ฟาร์มที่ได้รับมอบหมาย", assigned_team: "ทีมของตนเอง", own_tasks: "งานของตนเอง" } as const)[scope];
 }
 
 function getRoleProfile(personaId: "beginner" | "owner" | "commercial" | "export" | "employee") {

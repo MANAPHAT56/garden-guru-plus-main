@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { ChevronRight, Plus, Trash2, CalendarDays, Sprout, TrendingUp } from "lucide-react";
 import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
@@ -6,6 +6,7 @@ import { usePlots } from "@/hooks/usePlots";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { toast } from "sonner";
+import { getLocalDateKey } from "@/lib/dragonfly-data";
 
 export const Route = createFileRoute("/crop-calendar")({
   head: () => ({
@@ -564,6 +565,11 @@ function CropCalendarPage() {
           <p className="mt-1 text-xs text-muted-foreground">รอบปลูกและช่วงการดูแลคำนวณจากเทมเพลตพืชกับวันที่ปลูกที่ระบบสร้างขึ้น เป็นประมาณการแบบ rule-based ใน Demo Mode ไม่ใช่ข้อมูลเซนเซอร์หรือคำสั่ง AI จริง</p>
         </Card>
       ) : null}
+      <Card className="border-primary/25 bg-card">
+        <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 size-5 shrink-0 text-primary" /><div><p className="text-sm font-semibold">ปฏิทิน AI มีไว้ทำอะไร</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">เป็นแผนรอบปลูกที่คาดช่วงการเจริญเติบโตจากชนิดพืชและวันที่ปลูก เพื่อเตือนสิ่งที่ควรเตรียมล่วงหน้า ไม่ใช่รายการงานที่คนงานต้องทำทันที</p></div></div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]"><div className="rounded-lg bg-muted/55 p-2"><strong>1. คำนวณช่วงพืช</strong><p className="mt-0.5 text-muted-foreground">Rule-based จากเทมเพลตพืช</p></div><div className="rounded-lg bg-muted/55 p-2"><strong>2. เสนอแผนดูแล</strong><p className="mt-0.5 text-muted-foreground">น้ำ ปุ๋ย โรค และการเตรียมเก็บ</p></div><div className="rounded-lg bg-muted/55 p-2"><strong>3. คนตรวจสอบ</strong><p className="mt-0.5 text-muted-foreground">เทียบอากาศ เซนเซอร์ และสภาพจริง</p></div><div className="rounded-lg bg-muted/55 p-2"><strong>4. สร้าง Task</strong><p className="mt-0.5 text-muted-foreground">ยืนยันแล้วจึงเข้าปฏิทินงาน</p></div></div>
+        <p className="mt-3 text-[11px] text-muted-foreground">ระบบจะไม่สั่งซื้อวัสดุ เปิดวาล์ว หรือมอบหมายคนอัตโนมัติโดยไม่มีผู้ใช้ยืนยัน</p>
+      </Card>
       <Card className="space-y-3">
         <SearchableSelect label="ฟาร์ม" options={dragonfly.dashboardFarms.map((farm) => ({ value: farm.id, label: `${farm.name} · ${farm.location}` }))} value={farmFilter} onChange={(value) => { setFarmFilter(value); setSiteFilter("ทั้งหมด"); setPlotFilter("ทั้งหมด"); }} searchPlaceholder="ค้นหาชื่อฟาร์มหรือพื้นที่" />
         <SearchableSelect label="โซน" options={["ทั้งหมด", ...dragonfly.state.sites.map((site) => ({ value: site.id, label: `${site.code} · ${site.name}` }))]} value={siteFilter} onChange={(value) => { setSiteFilter(value); setPlotFilter("ทั้งหมด"); }} allLabel="ทุกโซนในฟาร์ม" searchPlaceholder="ค้นหารหัสหรือชื่อโซน" />
@@ -780,6 +786,8 @@ function CropCalendarPage() {
                 </div>
               </div>
             )}
+            <button onClick={() => { if (!selectedPlot || !currentStage) return; const taskType = currentStage.water ? "Irrigation" : currentStage.fertilizer ? "Fertilizer" : "Inspection"; dragonfly.addTask({ title: `ตรวจและดูแลตามช่วง ${currentStage.label}`, plot: selectedPlot.id, farmId: selectedPlot.farmId ?? farmFilter, siteId: selectedPlot.siteId, type: taskType, status: "Planned", scheduledFor: getLocalDateKey(), priority: "Normal", origin: "system", createdBy: "ปฏิทินรอบปลูกอัจฉริยะ" }); toast.success("เพิ่มคำแนะนำเป็น Task ในปฏิทินงานแล้ว"); }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">ยืนยันและเพิ่มเป็นงานวันนี้</button>
+            <Link to="/calendar" className="block text-center text-xs font-semibold text-primary">เปิดปฏิทินงานเพื่อมอบหมายทีม/คน</Link>
           </Card>
 
           {/* Full stage timeline */}

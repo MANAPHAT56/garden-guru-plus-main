@@ -10,13 +10,18 @@ import {
   Tags,
   MapPin,
   Building2,
+  Clock3,
+  UserRound,
+  ShieldCheck,
+  ListChecks,
 } from "lucide-react";
 import { AppShell, Badge, Card, Progress, SectionTitle, baht } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
-import { notifications, todayTasks, weather } from "@/lib/farm-data";
+import { notifications, todayTasks as legacyTodayTasks, weather } from "@/lib/farm-data";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
 import { usePlots } from "@/hooks/usePlots";
 import { ExperienceProgression } from "@/components/ExperienceProgression";
+import { getTaskReviewerLabel, isTaskInPeriod, type SmartTask } from "@/lib/dragonfly-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,7 +48,7 @@ function Dashboard() {
   const isOwner = dragonfly.persona.id === "owner";
   const isCommercial = dragonfly.persona.profile.operationScale === "Commercial Farm";
   const isExport = dragonfly.persona.profile.operationScale === "Enterprise / Export";
-  const smartTasks = dragonfly.isDemoMode ? dragonfly.state.tasks : todayTasks;
+  const smartTasks = dragonfly.isDemoMode ? dragonfly.state.tasks : legacyTodayTasks;
   const smartWeather = dragonfly.isDemoMode ? dragonfly.state.weather : weather.now;
   const avgHealth =
     plots.length > 0 ? Math.round(plots.reduce((s, p) => s + p.health, 0) / plots.length) : 0;
@@ -51,7 +56,20 @@ function Dashboard() {
   const selectedFarm = dragonfly.activeDashboardFarm;
   const isPrimaryFarm = selectedFarm.id === "FARM-PRIMARY";
   const farmHealth = isPrimaryFarm ? avgHealth : selectedFarm.status === "Needs attention" ? 78 : 91;
-  const farmTasks = isPrimaryFarm ? smartTasks : selectedFarm.status === "Needs attention" ? smartTasks.filter((task) => task.status !== "Completed") : smartTasks.filter((task) => task.status === "Completed");
+  const farmTasks = smartTasks.filter((task) => {
+    if (!dragonfly.isDemoMode) return true;
+    const smartTask = task as SmartTask;
+    const plot = dragonfly.state.plots.find((item) => item.id === smartTask.plot || item.name === smartTask.plot);
+    return (smartTask.farmId ?? plot?.farmId ?? "FARM-PRIMARY") === selectedFarm.id;
+  });
+  const employeeWorker = dragonfly.state.workers.find((worker) => worker.id === "W-004") ?? dragonfly.state.workers[0];
+  const todayFarmTasks = farmTasks
+    .filter((task) => !dragonfly.isDemoMode || isTaskInPeriod((task as SmartTask).scheduledFor, "today", { start: "", end: "" }))
+    .filter((task) => dragonfly.persona.id !== "employee" || (task as SmartTask).assignedWorkerId === employeeWorker?.id || (!(task as SmartTask).assignedWorkerId && (task as SmartTask).team === employeeWorker?.crew))
+    .sort(compareDashboardTasks);
+  const todayOpenCount = todayFarmTasks.filter((task) => !["Completed", "Cancelled", "Skipped"].includes(getDashboardTaskStatus(task))).length;
+  const todayReviewCount = todayFarmTasks.filter((task) => getDashboardTaskStatus(task) === "Supervisor Review").length;
+  const todayCompletedCount = todayFarmTasks.filter((task) => getDashboardTaskStatus(task) === "Completed").length;
 
   const [transactions, setTransactions] = useState<any[]>([]);
 
@@ -261,38 +279,92 @@ function Dashboard() {
 
       <SectionTitle
         action={
-          <Link to="/calendar" className="text-xs font-medium text-primary">
-            ปฏิทินงาน
+          <Link to="/calendar" className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+            ดูในปฏิทิน <ChevronRight className="size-3.5" />
           </Link>
         }
       >
-        งานที่ต้องทำวันนี้
+        งานที่ต้องทำวันนี้ · {todayFarmTasks.length}
       </SectionTitle>
-      <Card className="space-y-3">
-        {farmTasks.slice(0, 4).map((t: any) => (
-          <div key={t.id} className="flex items-center gap-3">
-            <span
-              className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm ${
-                t.done || t.status === "Completed" ? "bg-primary-soft text-primary" : "bg-muted"
-              }`}
-            >
-              {t.type === "Irrigation" || t.type === "รดน้ำ" ? "💧" : t.type === "Fertilizer" || t.type === "ใส่ปุ๋ย" ? "🌿" : "🧴"}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p
-                className={`truncate text-sm font-medium ${t.done || t.status === "Completed" ? "text-muted-foreground line-through" : ""}`}
-              >
-                {t.title}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {t.time ? `${t.time} · ` : ""}{t.plot}
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-border bg-muted/35 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-foreground">ตรงกับปฏิทิน: วันนี้ · {selectedFarm.name}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {dragonfly.persona.id === "employee" ? "แสดงเฉพาะงานที่มอบหมายให้คุณ" : "แสดงทุกทีม ทุกโซน และทุกแปลงในฟาร์มนี้"}
               </p>
             </div>
-            <Badge tone={t.done || t.status === "Completed" ? "good" : t.status === "Delayed" ? "bad" : "warn"}>
-              {t.status ?? (t.done ? "เสร็จ" : "รอทำ")}
-            </Badge>
+            <ListChecks className="mt-0.5 size-4 shrink-0 text-primary" />
           </div>
-        ))}
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: "ทั้งหมด", value: todayFarmTasks.length },
+              { label: "ยังเปิด", value: todayOpenCount },
+              { label: "รอตรวจ", value: todayReviewCount },
+              { label: "เสร็จแล้ว", value: todayCompletedCount },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg bg-card px-1 py-2">
+                <p className="text-base font-bold text-foreground">{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {todayFarmTasks.length > 0 ? (
+          <div className="divide-y divide-border">
+            {todayFarmTasks.map((task) => {
+              const smartTask = task as SmartTask & { time?: string; done?: boolean };
+              const plot = dragonfly.state.plots.find((item) => item.id === smartTask.plot || item.name === smartTask.plot);
+              const site = dragonfly.state.sites.find((item) => item.id === smartTask.siteId || item.plotPrefixes.some((prefix) => smartTask.plot.startsWith(prefix)));
+              const worker = dragonfly.state.workers.find((item) => item.id === smartTask.assignedWorkerId);
+              const status = getDashboardTaskStatus(task);
+              const isCompleted = status === "Completed";
+              return (
+                <div key={smartTask.id} className="px-4 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 shrink-0 text-center">
+                      <span className={`flex size-10 items-center justify-center rounded-lg text-base ${isCompleted ? "bg-primary-soft" : status === "Delayed" ? "bg-destructive/10" : "bg-muted"}`}>
+                        {getTaskTypeIcon(smartTask.type)}
+                      </span>
+                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">{smartTask.plannedStart ?? smartTask.time ?? "--:--"}</p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-semibold leading-snug ${isCompleted ? "text-muted-foreground" : "text-foreground"}`}>{smartTask.title}</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {smartTask.id} · {plot ? `${plot.id} ${plot.name}` : smartTask.plot}{plot?.crop ? ` · ${plot.crop}` : ""}{site ? ` · ${site.name}` : ""}
+                          </p>
+                        </div>
+                        <Badge tone={getTaskStatusTone(status)}>{getTaskStatusLabel(status)}</Badge>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Clock3 className="size-3" />{smartTask.estimatedMinutes ? `${smartTask.estimatedMinutes} นาที` : "ไม่ระบุระยะเวลา"}</span>
+                        <span className="inline-flex items-center gap-1"><UserRound className="size-3" />{worker?.name ?? "รอมอบหมาย"}{smartTask.team ? ` · ${smartTask.team}` : ""}</span>
+                        {(smartTask.origin === "team" || smartTask.team) ? <span className="inline-flex items-center gap-1"><ShieldCheck className="size-3" />{getTaskReviewerLabel(smartTask)}</span> : null}
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`rounded-md px-2 py-1 text-[10px] font-semibold ${getTaskPriorityTone(smartTask.priority)}`}>ความสำคัญ {getTaskPriorityLabel(smartTask.priority)}</span>
+                        <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">{getTaskTypeLabel(smartTask.type)}</span>
+                      </div>
+                      {smartTask.reason ? <p className="mt-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-[11px] text-destructive">สาเหตุที่ล่าช้า: {smartTask.reason}</p> : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-4 py-8 text-center">
+            <p className="text-sm font-semibold">ไม่มีงานที่กำหนดไว้สำหรับวันนี้</p>
+            <p className="mt-1 text-xs text-muted-foreground">สร้างหรือเลื่อนงานจากปฏิทิน แล้วรายการจะมาแสดงที่นี่อัตโนมัติ</p>
+            <Link to="/calendar" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">เปิดปฏิทินงาน <ChevronRight className="size-3.5" /></Link>
+          </div>
+        )}
       </Card>
 
       {dragonfly.isDemoMode && dragonfly.state.recommendations.length > 0 ? (
@@ -392,4 +464,54 @@ function Dashboard() {
       </Card>
     </AppShell>
   );
+}
+
+function getDashboardTaskStatus(task: any) {
+  return task.status ?? (task.done ? "Completed" : "Planned");
+}
+
+function compareDashboardTasks(a: any, b: any) {
+  const priority = { Urgent: 0, High: 1, Normal: 2, Low: 3 } as Record<string, number>;
+  const status = { Delayed: 0, "Supervisor Review": 1, "In Progress": 2, Assigned: 3, Planned: 4, Completed: 5, Skipped: 6, Cancelled: 7 } as Record<string, number>;
+  const priorityDifference = (priority[a.priority ?? "Normal"] ?? 2) - (priority[b.priority ?? "Normal"] ?? 2);
+  if (priorityDifference !== 0) return priorityDifference;
+  const statusDifference = (status[getDashboardTaskStatus(a)] ?? 4) - (status[getDashboardTaskStatus(b)] ?? 4);
+  if (statusDifference !== 0) return statusDifference;
+  return String(a.plannedStart ?? a.time ?? "99:99").localeCompare(String(b.plannedStart ?? b.time ?? "99:99"));
+}
+
+function getTaskStatusLabel(status: string) {
+  return ({ Planned: "วางแผนแล้ว", Assigned: "มอบหมายแล้ว", "In Progress": "กำลังทำ", "Supervisor Review": "รอตรวจรับ", Completed: "เสร็จแล้ว", Delayed: "ล่าช้า", Skipped: "ข้ามงาน", Cancelled: "ยกเลิก" } as Record<string, string>)[status] ?? status;
+}
+
+function getTaskStatusTone(status: string): "good" | "warn" | "bad" | "info" | "muted" {
+  if (status === "Completed") return "good";
+  if (["Delayed", "Skipped", "Cancelled"].includes(status)) return "bad";
+  if (status === "In Progress") return "info";
+  if (["Assigned", "Supervisor Review"].includes(status)) return "warn";
+  return "muted";
+}
+
+function getTaskPriorityLabel(priority?: SmartTask["priority"]) {
+  return priority === "Urgent" ? "เร่งด่วน" : priority === "High" ? "สูง" : priority === "Low" ? "ต่ำ" : "ปกติ";
+}
+
+function getTaskPriorityTone(priority?: SmartTask["priority"]) {
+  if (priority === "Urgent") return "bg-destructive/15 text-destructive";
+  if (priority === "High") return "bg-amber-100 text-amber-800";
+  return "bg-muted text-muted-foreground";
+}
+
+function getTaskTypeLabel(type: string) {
+  return ({ Irrigation: "ระบบน้ำ", Fertilizer: "ใส่ปุ๋ย", Inspection: "ตรวจแปลง", Harvest: "เก็บเกี่ยว", Pruning: "ตัดแต่ง", Maintenance: "บำรุงรักษา", Record: "บันทึกข้อมูล", "Plant Health": "สุขภาพพืช", รดน้ำ: "ระบบน้ำ", ใส่ปุ๋ย: "ใส่ปุ๋ย", ฉีดยา: "อารักขาพืช" } as Record<string, string>)[type] ?? type;
+}
+
+function getTaskTypeIcon(type: string) {
+  if (["Irrigation", "รดน้ำ"].includes(type)) return "💧";
+  if (["Fertilizer", "ใส่ปุ๋ย", "Plant Health"].includes(type)) return "🌿";
+  if (type === "Harvest") return "🧺";
+  if (type === "Pruning") return "✂️";
+  if (type === "Record") return "📝";
+  if (type === "Maintenance") return "🔧";
+  return "🔎";
 }

@@ -5,6 +5,7 @@ import {
   demoPersonas,
   evaluateIoTRules,
   getWorkOrderCompletionIssue,
+  getLocalDateKey,
   getCurrentDemoPersona,
   getDemoState,
   getInitialDemoState,
@@ -26,6 +27,7 @@ import {
   type WorkOrder,
   type DashboardFarm,
   type FarmSite,
+  type PurchaseRequest,
 } from "@/lib/dragonfly-data";
 import type { Plot } from "@/lib/farm-data";
 
@@ -126,7 +128,7 @@ export function useDragonflyData() {
         {
           id: `TASK-${Date.now()}`,
           status: task.status ?? "Planned",
-          scheduledFor: task.scheduledFor ?? new Date().toISOString().slice(0, 10),
+          scheduledFor: task.scheduledFor ?? getLocalDateKey(),
           origin: task.origin ?? (task.team || task.assignedWorkerId ? "team" : "personal"),
           ...task,
         },
@@ -153,6 +155,13 @@ export function useDragonflyData() {
             }
           : plot
       ) : state.plots,
+    });
+  };
+
+  const startTeamTask = (taskId: string, workerId: string) => {
+    persist({
+      ...state,
+      tasks: state.tasks.map((task) => task.id === taskId ? { ...task, assignedWorkerId: task.assignedWorkerId ?? workerId, status: "In Progress" } : task),
     });
   };
 
@@ -256,13 +265,19 @@ export function useDragonflyData() {
     return { sent: newEmails.length, invalid: uniqueEmails.length - newEmails.length };
   };
 
-  const addOrganizationRole = (name: string, permissions: string[]) => {
+  const addOrganizationRole = (name: string, permissions: string[], scope: OrganizationRole["scope"] = "assigned_team") => {
     const normalizedName = name.trim();
     if (!normalizedName || !permissions.length) return { ok: false as const, reason: "กรอกชื่อ role และเลือกสิทธิ์อย่างน้อย 1 รายการ" };
     if (state.organizationRoles.some((role) => role.name.toLocaleLowerCase("th-TH") === normalizedName.toLocaleLowerCase("th-TH"))) return { ok: false as const, reason: "มี role ชื่อนี้ในองค์กรแล้ว" };
-    const newRole: OrganizationRole = { id: `ROLE-${Date.now()}`, name: normalizedName, permissions };
+    const newRole: OrganizationRole = { id: `ROLE-${Date.now()}`, name: normalizedName, permissions, scope };
     persist({ ...state, organizationRoles: [...state.organizationRoles, newRole] });
     return { ok: true as const, role: newRole };
+  };
+
+  const updateOrganizationRole = (roleId: string, updates: Pick<OrganizationRole, "permissions" | "scope">) => {
+    if (!updates.permissions.length) return { ok: false as const, reason: "เลือกสิทธิ์อย่างน้อย 1 รายการ" };
+    persist({ ...state, organizationRoles: state.organizationRoles.map((role) => role.id === roleId ? { ...role, ...updates } : role) });
+    return { ok: true as const };
   };
 
   const addDocumentType = (documentType: Omit<OrganizationDocumentType, "id" | "builtIn">) => {
@@ -284,6 +299,41 @@ export function useDragonflyData() {
     persist({ ...state, documents: state.documents.map((document) => document.id === documentId ? { ...document, status, approvedBy: status === "Approved" ? approvedBy : document.approvedBy } : document) });
   };
 
+  const addPurchaseRequest = (request: Omit<PurchaseRequest, "id" | "requestedAt" | "status"> & Partial<Pick<PurchaseRequest, "status">>) => {
+    const created: PurchaseRequest = {
+      ...request,
+      id: `PR-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+      requestedAt: getLocalDateKey(),
+      status: request.status ?? "Pending Approval",
+    };
+    persist({ ...state, purchaseRequests: [created, ...state.purchaseRequests] });
+    return created;
+  };
+
+  const updatePurchaseRequestStatus = (requestId: string, status: PurchaseRequest["status"], details?: Partial<Pick<PurchaseRequest, "approvedBy" | "supplier" | "orderNumber">>) => {
+    persist({
+      ...state,
+      purchaseRequests: state.purchaseRequests.map((request) => request.id === requestId ? { ...request, ...details, status } : request),
+    });
+  };
+
+  const receivePurchaseRequest = (requestId: string) => {
+    const request = state.purchaseRequests.find((item) => item.id === requestId);
+    if (!request || request.status === "Received") return { ok: false as const };
+    persist({
+      ...state,
+      inventoryItems: state.inventoryItems.map((item) => item.id === request.itemId ? { ...item, onHand: item.onHand + request.quantity, updatedAt: "รับสินค้าเข้าคลังเมื่อสักครู่" } : item),
+      purchaseRequests: state.purchaseRequests.map((item) => item.id === requestId ? { ...item, status: "Received", receivedQuantity: item.quantity } : item),
+    });
+    return { ok: true as const };
+  };
+
+  const updateInventoryStock = (itemId: string, onHand: number) => {
+    if (!Number.isFinite(onHand) || onHand < 0) return { ok: false as const };
+    persist({ ...state, inventoryItems: state.inventoryItems.map((item) => item.id === itemId ? { ...item, onHand, updatedAt: "ปรับยอดนับจริงเมื่อสักครู่" } : item) });
+    return { ok: true as const };
+  };
+
   const completeTutorialStep = (stepIds: string | string[]) => {
     const completedIds = Array.isArray(stepIds) ? stepIds : [stepIds];
     persist({ ...state, tutorialProgress: [...new Set([...state.tutorialProgress, ...completedIds])] });
@@ -303,6 +353,7 @@ export function useDragonflyData() {
     addPlot,
     addTask,
     updateTaskStatus,
+    startTeamTask,
     recordWeeklyInspection,
     updateWorkOrderStatus,
     updateDevice,
@@ -313,9 +364,14 @@ export function useDragonflyData() {
     addWorker,
     inviteMembers,
     addOrganizationRole,
+    updateOrganizationRole,
     addDocumentType,
     addDocument,
     updateDocumentStatus,
+    addPurchaseRequest,
+    updatePurchaseRequestStatus,
+    receivePurchaseRequest,
+    updateInventoryStock,
     completeTutorialStep,
   };
 }

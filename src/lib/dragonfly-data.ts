@@ -121,16 +121,22 @@ export type SmartTask = {
   id: string;
   title: string;
   plot: string;
+  farmId?: string;
+  siteId?: string;
   type: string;
   status: "Planned" | "Assigned" | "In Progress" | "Supervisor Review" | "Completed" | "Delayed" | "Skipped" | "Cancelled";
   reason?: string;
   scheduledFor?: string;
+  plannedStart?: string;
+  estimatedMinutes?: number;
+  priority?: "Low" | "Normal" | "High" | "Urgent";
   assignedWorkerId?: string;
   team?: string;
   /** One shared task record powers both an owner's todo and a manager's team board. */
   origin?: "personal" | "team" | "system";
   createdBy?: string;
   ownerPersonaId?: DemoPersonaId;
+  approvalMode?: "self" | "team_lead" | "farm_manager" | "qa";
   completion?: { note: string; health?: number; evidenceCount: number; completedAt?: string; completedBy?: string; approvedBy?: string; laborHours?: number; laborCost?: number; materialCost?: number; chemicalLot?: string; phiDays?: number };
 };
 
@@ -212,8 +218,93 @@ export type OrganizationRole = {
   id: string;
   name: string;
   permissions: string[];
+  scope: "organization" | "assigned_farms" | "assigned_team" | "own_tasks";
   builtIn?: boolean;
 };
+
+export const organizationPermissionOptions = [
+  "ดูงานทีม",
+  "ดูและอัปเดตงานของตนเอง",
+  "สร้างและมอบหมายงาน",
+  "อนุมัติงานทุกทีมในฟาร์ม",
+  "อนุมัติงานเฉพาะทีมตนเอง",
+  "อนุมัติงาน QA/เก็บเกี่ยว",
+  "ดูต้นทุนและรายได้",
+  "ดู Traceability/QA",
+  "จัดการสมาชิกและบทบาท",
+  "ดูสต็อกและใบขอซื้อ",
+  "สร้างใบขอซื้อ",
+  "อนุมัติใบขอซื้อ",
+  "ออกคำสั่งซื้อ PO",
+  "รับสินค้าและปรับยอดสต็อก",
+] as const;
+
+export const defaultOrganizationRoles: OrganizationRole[] = [
+  { id: "ROLE-OWNER", name: "Owner / Admin", scope: "organization", builtIn: true, permissions: [...organizationPermissionOptions] },
+  { id: "ROLE-MANAGER", name: "ผู้จัดการฟาร์ม", scope: "assigned_farms", builtIn: true, permissions: ["ดูงานทีม", "สร้างและมอบหมายงาน", "อนุมัติงานทุกทีมในฟาร์ม", "ดูต้นทุนและรายได้", "ดู Traceability/QA", "จัดการสมาชิกและบทบาท", "ดูสต็อกและใบขอซื้อ", "สร้างใบขอซื้อ", "อนุมัติใบขอซื้อ"] },
+  { id: "ROLE-SUPERVISOR", name: "หัวหน้าทีม", scope: "assigned_team", builtIn: true, permissions: ["ดูงานทีม", "สร้างและมอบหมายงาน", "อนุมัติงานเฉพาะทีมตนเอง", "ดูสต็อกและใบขอซื้อ", "สร้างใบขอซื้อ"] },
+  { id: "ROLE-WORKER", name: "พนักงานภาคสนาม", scope: "own_tasks", builtIn: true, permissions: ["ดูและอัปเดตงานของตนเอง"] },
+  { id: "ROLE-QA", name: "เจ้าหน้าที่ QA", scope: "assigned_farms", builtIn: true, permissions: ["ดูงานทีม", "อนุมัติงาน QA/เก็บเกี่ยว", "ดู Traceability/QA"] },
+  { id: "ROLE-PROCUREMENT", name: "เจ้าหน้าที่จัดซื้อ", scope: "assigned_farms", builtIn: true, permissions: ["ดูสต็อกและใบขอซื้อ", "ออกคำสั่งซื้อ PO"] },
+  { id: "ROLE-WAREHOUSE", name: "เจ้าหน้าที่คลัง", scope: "assigned_farms", builtIn: true, permissions: ["ดูสต็อกและใบขอซื้อ", "รับสินค้าและปรับยอดสต็อก"] },
+];
+
+export function getTaskApprovalMode(task: Pick<SmartTask, "origin" | "team" | "type" | "approvalMode">) {
+  if (task.approvalMode) return task.approvalMode;
+  if (task.origin === "personal" && !task.team) return "self" as const;
+  if (["Chemical", "Harvest", "QA"].includes(task.type)) return "qa" as const;
+  return "team_lead" as const;
+}
+
+export function getTaskReviewerLabel(task: Pick<SmartTask, "origin" | "team" | "type" | "approvalMode">) {
+  const mode = getTaskApprovalMode(task);
+  if (mode === "self") return "เจ้าของงานยืนยันด้วยตนเอง";
+  if (mode === "qa") return "เจ้าหน้าที่ QA ของฟาร์ม";
+  if (mode === "farm_manager") return "ผู้จัดการฟาร์ม";
+  return `หัวหน้าทีม ${task.team ?? "ที่รับผิดชอบ"} · ผู้จัดการฟาร์มเป็นผู้อนุมัติสำรอง`;
+}
+
+export function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function isTaskInPeriod(date: string | undefined, period: string, customRange: { start: string; end: string }) {
+  if (period === "all") return true;
+  if (!date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const scheduled = new Date(`${date}T00:00:00`);
+
+  if (period === "custom") {
+    const start = customRange.start ? new Date(`${customRange.start}T00:00:00`) : undefined;
+    const end = customRange.end ? new Date(`${customRange.end}T23:59:59`) : undefined;
+    return (!start || scheduled >= start) && (!end || scheduled <= end);
+  }
+
+  if (period === "today") return date === getLocalDateKey();
+  const days = period === "7d" ? 7 : 30;
+  const end = new Date(today);
+  end.setDate(today.getDate() + days);
+  return scheduled >= today && scheduled <= end;
+}
+
+export function canOrganizationRoleApproveTask(role: OrganizationRole, task: Pick<SmartTask, "origin" | "team" | "type" | "approvalMode">, reviewerTeam?: string) {
+  const mode = getTaskApprovalMode(task);
+  if (role.scope === "assigned_team" && reviewerTeam !== task.team) return false;
+  if (mode === "qa") return role.permissions.includes("อนุมัติงาน QA/เก็บเกี่ยว");
+  if (mode === "farm_manager") return role.permissions.includes("อนุมัติงานทุกทีมในฟาร์ม");
+  if (mode === "team_lead") return role.permissions.includes("อนุมัติงานทุกทีมในฟาร์ม") || role.permissions.includes("อนุมัติงานเฉพาะทีมตนเอง");
+  return role.permissions.includes("ดูและอัปเดตงานของตนเอง");
+}
+
+export function canPersonaApproveTask(personaId: DemoPersonaId, task: Pick<SmartTask, "origin" | "team" | "type" | "approvalMode">, roles: OrganizationRole[] = defaultOrganizationRoles) {
+  const roleIds = personaId === "export" ? ["ROLE-MANAGER", "ROLE-QA"] : personaId === "commercial" ? ["ROLE-MANAGER"] : personaId === "owner" ? ["ROLE-OWNER"] : ["ROLE-WORKER"];
+  return roles.filter((role) => roleIds.includes(role.id)).some((role) => canOrganizationRoleApproveTask(role, task, task.team));
+}
 
 export type IoTDevice = {
   id: string;
@@ -302,6 +393,55 @@ export type FarmDocument = {
   notes?: string;
 };
 
+export type InventoryItem = {
+  id: string;
+  farmId: string;
+  siteId?: string;
+  name: string;
+  category: "ปุ๋ยและธาตุอาหาร" | "ชีวภัณฑ์และสารป้องกัน" | "เชื้อเพลิง" | "วัสดุเก็บเกี่ยว" | "อะไหล่และอุปกรณ์";
+  unit: string;
+  onHand: number;
+  reorderPoint: number;
+  targetStock: number;
+  averageDailyUsage: number;
+  leadTimeDays: number;
+  unitCost: number;
+  supplier: string;
+  updatedAt: string;
+};
+
+export type PurchaseRequest = {
+  id: string;
+  farmId: string;
+  itemId: string;
+  quantity: number;
+  unit: string;
+  requestedBy: string;
+  requestedAt: string;
+  neededBy: string;
+  reason: string;
+  status: "Draft" | "Pending Approval" | "Approved" | "Ordered" | "Partially Received" | "Received" | "Rejected";
+  approvedBy?: string;
+  supplier?: string;
+  orderNumber?: string;
+  receivedQuantity?: number;
+};
+
+export function getInventoryDaysRemaining(item: InventoryItem) {
+  return item.averageDailyUsage > 0 ? Math.floor(item.onHand / item.averageDailyUsage) : undefined;
+}
+
+export function getSuggestedOrderQuantity(item: InventoryItem) {
+  return Math.max(0, item.targetStock - item.onHand);
+}
+
+export function getInventoryStatus(item: InventoryItem) {
+  const daysRemaining = getInventoryDaysRemaining(item);
+  if (item.onHand <= item.reorderPoint || (daysRemaining !== undefined && daysRemaining <= item.leadTimeDays)) return "order" as const;
+  if (item.onHand <= item.reorderPoint * 1.35 || (daysRemaining !== undefined && daysRemaining <= item.leadTimeDays + 3)) return "watch" as const;
+  return "ready" as const;
+}
+
 export type DemoState = {
   personaId: DemoPersonaId;
   farm: FarmSummary;
@@ -323,6 +463,8 @@ export type DemoState = {
   traceability: TraceabilityChain[];
   documentTypes: OrganizationDocumentType[];
   documents: FarmDocument[];
+  inventoryItems: InventoryItem[];
+  purchaseRequests: PurchaseRequest[];
   tutorialProgress: string[];
   phiScenario: {
     plot: string;
@@ -336,6 +478,7 @@ export type DemoState = {
 
 const STORAGE_KEY = "dragonfly_demo_state_v1";
 const PERSONA_KEY = "dragonfly_demo_persona_v1";
+const EMPLOYEE_PARENT_PERSONA_KEY = "easyplants_employee_parent_persona";
 
 export const appDataMode: DataMode =
   (import.meta.env.VITE_APP_DATA_MODE as DataMode | undefined) ??
@@ -471,6 +614,8 @@ function orchardPlots(prefix = "D", scale = 1): Plot[] {
 
   return base.map(([code, variety, stage, area, trees, health]) => ({
     id: `${prefix}${code}`,
+    farmId: "FARM-PRIMARY",
+    siteId: Number(code) <= 2 ? "SITE-D01" : Number(code) <= 4 ? "SITE-D02" : "SITE-D03",
     name: `แปลง ${prefix}${code}`,
     crop: `ทุเรียน${variety}`,
     emoji: "🥭",
@@ -509,6 +654,27 @@ function demoDocuments(farmName: string): FarmDocument[] {
   ];
 }
 
+function demoInventoryItems(): InventoryItem[] {
+  return [
+    { id: "INV-001", farmId: "FARM-PRIMARY", siteId: "SITE-D02", name: "ปุ๋ย 15-15-15", category: "ปุ๋ยและธาตุอาหาร", unit: "กระสอบ", onHand: 18, reorderPoint: 24, targetStock: 40, averageDailyUsage: 6, leadTimeDays: 4, unitCost: 760, supplier: "สหกรณ์การเกษตรจันทบุรี", updatedAt: "วันนี้ 07:30" },
+    { id: "INV-002", farmId: "FARM-PRIMARY", siteId: "SITE-D02", name: "ชีวภัณฑ์ป้องกันโรค", category: "ชีวภัณฑ์และสารป้องกัน", unit: "ขวด", onHand: 12, reorderPoint: 6, targetStock: 12, averageDailyUsage: 0.5, leadTimeDays: 5, unitCost: 420, supplier: "ไบโอฟาร์มซัพพลาย", updatedAt: "เมื่อวาน 16:20" },
+    { id: "INV-003", farmId: "FARM-PRIMARY", siteId: "SITE-D03", name: "เชื้อเพลิงดีเซล", category: "เชื้อเพลิง", unit: "ลิตร", onHand: 220, reorderPoint: 240, targetStock: 600, averageDailyUsage: 55, leadTimeDays: 2, unitCost: 34.5, supplier: "PT Farm Fleet", updatedAt: "วันนี้ 06:45" },
+    { id: "INV-004", farmId: "FARM-PRIMARY", siteId: "SITE-D02", name: "ลังเก็บเกี่ยว", category: "วัสดุเก็บเกี่ยว", unit: "ใบ", onHand: 74, reorderPoint: 35, targetStock: 100, averageDailyUsage: 8, leadTimeDays: 3, unitCost: 185, supplier: "Eastern Pack", updatedAt: "17 ส.ค. 15:10" },
+    { id: "INV-N01", farmId: "FARM-NORTH", siteId: "NORTH-A", name: "ปุ๋ยตามแผนฤดูกาล", category: "ปุ๋ยและธาตุอาหาร", unit: "กระสอบ", onHand: 6, reorderPoint: 20, targetStock: 40, averageDailyUsage: 5, leadTimeDays: 5, unitCost: 810, supplier: "สหกรณ์เขาคิชฌกูฏ", updatedAt: "วันนี้ 08:10" },
+    { id: "INV-N02", farmId: "FARM-NORTH", siteId: "NORTH-B", name: "วัสดุเก็บเกี่ยว", category: "วัสดุเก็บเกี่ยว", unit: "ชุด", onHand: 74, reorderPoint: 35, targetStock: 100, averageDailyUsage: 7, leadTimeDays: 4, unitCost: 210, supplier: "Eastern Pack", updatedAt: "เมื่อวาน 14:00" },
+    { id: "INV-E01", farmId: "FARM-EAST", siteId: "EAST-A", name: "เชื้อเพลิงดีเซล", category: "เชื้อเพลิง", unit: "ลิตร", onHand: 410, reorderPoint: 220, targetStock: 600, averageDailyUsage: 42, leadTimeDays: 2, unitCost: 34.5, supplier: "PT Farm Fleet", updatedAt: "วันนี้ 07:00" },
+  ];
+}
+
+function demoPurchaseRequests(): PurchaseRequest[] {
+  return [
+    { id: "PR-2569-018", farmId: "FARM-PRIMARY", itemId: "INV-001", quantity: 22, unit: "กระสอบ", requestedBy: "กิตติ · หัวหน้าทีมทั่วไป", requestedAt: "2026-08-18", neededBy: "2026-08-22", reason: "คงเหลือต่ำกว่าจุดสั่งซื้อและพอใช้ประมาณ 3 วัน", status: "Pending Approval" },
+    { id: "PR-2569-017", farmId: "FARM-PRIMARY", itemId: "INV-003", quantity: 380, unit: "ลิตร", requestedBy: "มาลี · หัวหน้าทีมระบบน้ำ", requestedAt: "2026-08-17", neededBy: "2026-08-20", reason: "เติมกลับถึงสต็อกเป้าหมายก่อนงานเครื่องจักรรอบถัดไป", status: "Ordered", approvedBy: "ผู้จัดการฟาร์ม", supplier: "PT Farm Fleet", orderNumber: "PO-2569-103" },
+    { id: "PR-2569-014", farmId: "FARM-PRIMARY", itemId: "INV-004", quantity: 30, unit: "ใบ", requestedBy: "สมพร · ทีมเก็บเกี่ยว", requestedAt: "2026-08-12", neededBy: "2026-08-16", reason: "เตรียมลังสำรองสำหรับรอบเก็บเกี่ยว", status: "Received", approvedBy: "ผู้จัดการฟาร์ม", supplier: "Eastern Pack", orderNumber: "PO-2569-099", receivedQuantity: 30 },
+    { id: "PR-N-006", farmId: "FARM-NORTH", itemId: "INV-N01", quantity: 34, unit: "กระสอบ", requestedBy: "ธนา · ผู้จัดการโซน", requestedAt: "2026-08-18", neededBy: "2026-08-23", reason: "สต็อกต่ำกว่าจุดสั่งซื้อก่อนรอบบำรุง", status: "Pending Approval" },
+  ];
+}
+
 function buildDemoState(personaId: DemoPersonaId): DemoState {
   if (personaId === "beginner") {
     return {
@@ -528,9 +694,9 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
       ],
       plots: legacyPlots.slice(0, 2).map((p, i) => ({ ...p, id: `B0${i + 1}`, area: i === 0 ? 3 : 2 })),
       tasks: [
-        { id: "BT-001", title: "ตรวจใบและยอดอ่อน", plot: "แปลงผักหลังบ้าน", type: "Plant Health", status: "Planned", scheduledFor: "2026-08-17" },
-        { id: "BT-002", title: "รดน้ำช่วงเช้า", plot: "แปลงมะนาว", type: "Irrigation", status: "Completed", scheduledFor: "2026-08-17" },
-        { id: "BT-003", title: "จดบันทึกการเจริญเติบโต", plot: "ทุกแปลง", type: "Record", status: "Planned", scheduledFor: "2026-08-20" },
+        { id: "BT-001", title: "ตรวจใบและยอดอ่อน", plot: "B01", farmId: "FARM-PRIMARY", siteId: "SITE-B01", type: "Plant Health", status: "Planned", scheduledFor: getLocalDateKey(), plannedStart: "07:00", estimatedMinutes: 25, priority: "High", origin: "personal" },
+        { id: "BT-002", title: "รดน้ำช่วงเช้า", plot: "B02", farmId: "FARM-PRIMARY", siteId: "SITE-B01", type: "Irrigation", status: "Completed", scheduledFor: getLocalDateKey(), plannedStart: "06:15", estimatedMinutes: 35, priority: "Normal", origin: "personal" },
+        { id: "BT-003", title: "จดบันทึกการเจริญเติบโต", plot: "B01", farmId: "FARM-PRIMARY", siteId: "SITE-B01", type: "Record", status: "Planned", scheduledFor: getLocalDateKey(), plannedStart: "17:00", estimatedMinutes: 15, priority: "Normal", origin: "personal" },
       ],
       recommendations: [
         {
@@ -561,13 +727,15 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
         },
       ],
       memberInvites: [],
-      organizationRoles: [],
+      organizationRoles: defaultOrganizationRoles.map((role) => ({ ...role, permissions: [...role.permissions] })),
       iotDevices: [],
       iotRules: [],
       iotAlerts: [],
       traceability: [],
       documentTypes: defaultDocumentTypes,
       documents: [],
+      inventoryItems: demoInventoryItems().filter((item) => item.farmId === "FARM-PRIMARY").slice(0, 2),
+      purchaseRequests: [],
       tutorialProgress: ["create-farm", "create-plot"],
       phiScenario: { plot: "-", chemicalDate: "-", phiDays: 0, earliestHarvest: "-", plannedHarvest: "-" },
       satellite: { plot: "แปลงมะนาว", previousNdvi: 0.64, currentNdvi: 0.62, changePercent: -3.1 },
@@ -581,7 +749,7 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     date.setDate(date.getDate() + offset);
-    return date.toISOString().slice(0, 10);
+    return getLocalDateKey(date);
   };
 
   return {
@@ -610,14 +778,27 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
         ],
     plots,
     tasks: [
-      { id: "T-001", title: "ตรวจระบบน้ำหยดและแรงดัน", plot: "D01", type: "Irrigation", status: "Completed", scheduledFor: scheduleDate(0), assignedWorkerId: "W-002", team: "Irrigation Crew" },
-      { id: "T-002", title: "สำรวจเพลี้ยแป้งใต้ทรงพุ่ม", plot: "D03", type: "Inspection", status: "In Progress", scheduledFor: scheduleDate(0), assignedWorkerId: "W-001", team: "Crop Protection Crew" },
-      { id: "T-003", title: "บันทึกความชื้นดินก่อนรอบให้น้ำ", plot: "D01", type: "Inspection", status: "Assigned", scheduledFor: scheduleDate(0), assignedWorkerId: "W-002", team: "Irrigation Crew" },
-      { id: "T-004", title: "ใส่ปุ๋ยก่อนเก็บเกี่ยว", plot: "D04", type: "Fertilizer", status: "Delayed", reason: "Heavy Rain", scheduledFor: scheduleDate(1), assignedWorkerId: "W-004", team: "General Farm Crew" },
-      { id: "T-005", title: "เตรียมทีมและอุปกรณ์เก็บเกี่ยว", plot: "D04", type: "Harvest", status: "Assigned", scheduledFor: scheduleDate(2), assignedWorkerId: "W-003", team: "Harvest Crew" },
-      { id: "T-006", title: "ตรวจวาล์วและล้างไส้กรอง", plot: "D02", type: "Irrigation", status: "Planned", scheduledFor: scheduleDate(3), assignedWorkerId: "W-002", team: "Irrigation Crew" },
-      { id: "T-007", title: "ตรวจคุณภาพผลก่อนตัด", plot: "D04", type: "Inspection", status: "Planned", scheduledFor: scheduleDate(5), assignedWorkerId: "W-005", team: "Harvest Crew" },
-      { id: "T-008", title: "ตัดแต่งกิ่งแห้งหลังเก็บ", plot: "D03", type: "Pruning", status: "Planned", scheduledFor: scheduleDate(7), assignedWorkerId: "W-001", team: "Crop Protection Crew" },
+      { id: "T-001", title: "ตรวจระบบน้ำหยดและแรงดัน", plot: "D01", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Irrigation", status: "Completed", scheduledFor: scheduleDate(0), plannedStart: "06:00", estimatedMinutes: 45, priority: "High", assignedWorkerId: "W-002", team: "Irrigation Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-002", title: "สำรวจเพลี้ยแป้งใต้ทรงพุ่ม", plot: "D03", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Inspection", status: "In Progress", scheduledFor: scheduleDate(0), plannedStart: "06:30", estimatedMinutes: 90, priority: "Urgent", assignedWorkerId: "W-001", team: "Crop Protection Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-003", title: "บันทึกความชื้นดินก่อนรอบให้น้ำ", plot: "D01", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Inspection", status: "Assigned", scheduledFor: scheduleDate(0), plannedStart: "07:15", estimatedMinutes: 30, priority: "High", assignedWorkerId: "W-002", team: "Irrigation Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-009", title: "ตรวจหัวจ่ายน้ำท้ายแถวและจุดรั่ว", plot: "D02", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Irrigation", status: "Assigned", scheduledFor: scheduleDate(0), plannedStart: "08:00", estimatedMinutes: 60, priority: "Normal", assignedWorkerId: "W-002", team: "Irrigation Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-010", title: "เก็บตัวอย่างดินก่อนวางแผนใส่ปุ๋ย", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Inspection", status: "Planned", scheduledFor: scheduleDate(0), plannedStart: "09:00", estimatedMinutes: 50, priority: "Normal", assignedWorkerId: "W-004", team: "General Farm Crew", origin: "team", approvalMode: "farm_manager" },
+      { id: "T-011", title: "ตรวจความพร้อมกรรไกรและลังเก็บเกี่ยว", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Harvest", status: "Supervisor Review", scheduledFor: scheduleDate(0), plannedStart: "10:00", estimatedMinutes: 40, priority: "High", assignedWorkerId: "W-003", team: "Harvest Crew", origin: "team", approvalMode: "qa", completion: { note: "ตรวจนับอุปกรณ์ครบและฆ่าเชื้อแล้ว", evidenceCount: 0, completedBy: "สมพร" } },
+      { id: "T-012", title: "ตัดหญ้าแนวร่องระบายน้ำ", plot: "D02", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Maintenance", status: "Delayed", reason: "ฝนตกช่วงเช้า พื้นที่ลื่น", scheduledFor: scheduleDate(0), plannedStart: "10:30", estimatedMinutes: 120, priority: "Normal", assignedWorkerId: "W-004", team: "General Farm Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-013", title: "สำรวจใบอ่อนและรอยทำลายของแมลง", plot: "D03", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Inspection", status: "In Progress", scheduledFor: scheduleDate(0), plannedStart: "13:00", estimatedMinutes: 75, priority: "High", assignedWorkerId: "W-001", team: "Crop Protection Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-014", title: "ตรวจคุณภาพผลล็อตตัวอย่างก่อนตัด", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Inspection", status: "Assigned", scheduledFor: scheduleDate(0), plannedStart: "14:00", estimatedMinutes: 60, priority: "Urgent", assignedWorkerId: "W-005", team: "Harvest Crew", origin: "team", approvalMode: "qa" },
+      { id: "T-015", title: "บันทึกอุณหภูมิและความชื้นจุดพักผลผลิต", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Record", status: "Completed", scheduledFor: scheduleDate(0), plannedStart: "15:30", estimatedMinutes: 20, priority: "Normal", assignedWorkerId: "W-005", team: "Harvest Crew", origin: "team", approvalMode: "qa" },
+      { id: "T-016", title: "เก็บเศษกิ่งและเปิดทางระบายน้ำหลังฝน", plot: "D02", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Maintenance", status: "Assigned", scheduledFor: scheduleDate(0), plannedStart: "16:00", estimatedMinutes: 80, priority: "High", team: "General Farm Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-004", title: "ใส่ปุ๋ยก่อนเก็บเกี่ยว", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Fertilizer", status: "Delayed", reason: "Heavy Rain", scheduledFor: scheduleDate(1), plannedStart: "07:00", estimatedMinutes: 180, priority: "High", assignedWorkerId: "W-004", team: "General Farm Crew", origin: "team", approvalMode: "farm_manager" },
+      { id: "T-005", title: "เตรียมทีมและอุปกรณ์เก็บเกี่ยว", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Harvest", status: "Assigned", scheduledFor: scheduleDate(2), plannedStart: "06:00", estimatedMinutes: 90, priority: "High", assignedWorkerId: "W-003", team: "Harvest Crew", origin: "team", approvalMode: "qa" },
+      { id: "T-006", title: "ตรวจวาล์วและล้างไส้กรอง", plot: "D02", farmId: "FARM-PRIMARY", siteId: "SITE-D01", type: "Irrigation", status: "Planned", scheduledFor: scheduleDate(3), plannedStart: "08:00", estimatedMinutes: 60, priority: "Normal", assignedWorkerId: "W-002", team: "Irrigation Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "T-007", title: "ตรวจคุณภาพผลก่อนตัด", plot: "D04", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Inspection", approvalMode: "qa", status: "Planned", scheduledFor: scheduleDate(5), plannedStart: "09:30", estimatedMinutes: 75, priority: "High", assignedWorkerId: "W-005", team: "Harvest Crew", origin: "team" },
+      { id: "T-008", title: "ตัดแต่งกิ่งแห้งหลังเก็บ", plot: "D03", farmId: "FARM-PRIMARY", siteId: "SITE-D02", type: "Pruning", status: "Planned", scheduledFor: scheduleDate(7), plannedStart: "07:30", estimatedMinutes: 150, priority: "Normal", assignedWorkerId: "W-001", team: "Crop Protection Crew", origin: "team", approvalMode: "team_lead" },
+      { id: "NT-001", title: "สำรวจน้ำขังบริเวณโคนต้น", plot: "N02", farmId: "FARM-NORTH", siteId: "NORTH-A", type: "Inspection", status: "In Progress", scheduledFor: scheduleDate(0), plannedStart: "06:45", estimatedMinutes: 75, priority: "Urgent", team: "ทีมดูแลโซนเนินเหนือ", origin: "team", approvalMode: "team_lead" },
+      { id: "NT-002", title: "ตรวจขนาดผลก่อนกำหนดรอบตัด", plot: "N07", farmId: "FARM-NORTH", siteId: "NORTH-B", type: "Harvest", status: "Assigned", scheduledFor: scheduleDate(0), plannedStart: "09:30", estimatedMinutes: 90, priority: "High", team: "ทีมเก็บเกี่ยวเหนือ 2", origin: "team", approvalMode: "qa" },
+      { id: "NT-003", title: "ตรวจบันทึก PHI ล็อต NORTH-003", plot: "N02", farmId: "FARM-NORTH", siteId: "NORTH-A", type: "Inspection", status: "Supervisor Review", scheduledFor: scheduleDate(0), plannedStart: "14:00", estimatedMinutes: 35, priority: "High", team: "ทีม QA ภาคเหนือ", origin: "team", approvalMode: "qa" },
+      { id: "ET-001", title: "ตรวจระดับน้ำร่องสวนหลังฝน", plot: "R03", farmId: "FARM-EAST", siteId: "EAST-A", type: "Inspection", status: "Planned", scheduledFor: scheduleDate(0), plannedStart: "07:00", estimatedMinutes: 60, priority: "High", team: "ทีมผลไม้ระยอง", origin: "team", approvalMode: "team_lead" },
+      { id: "ET-002", title: "บันทึกผลผลิตมังคุดรอบเช้า", plot: "R05", farmId: "FARM-EAST", siteId: "EAST-A", type: "Record", status: "Completed", scheduledFor: scheduleDate(0), plannedStart: "11:00", estimatedMinutes: 30, priority: "Normal", team: "ทีมผลไม้ระยอง", origin: "team", approvalMode: "farm_manager" },
     ],
     recommendations: [
       {
@@ -669,17 +850,17 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
       ],
     },
     workers: [
-      { id: "W-001", name: "อนันต์", role: "Supervisor", crew: "Crop Protection Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D03", currentTask: "Pest inspection" },
-      { id: "W-002", name: "มาลี", role: "Crew Lead", crew: "Irrigation Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D01", currentTask: "Inspect irrigation system" },
-      { id: "W-003", name: "สมพร", role: "Worker", crew: "Harvest Crew", status: "Available", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Standby harvest prep" },
-      { id: "W-004", name: "กิตติ", role: "Worker", crew: "General Farm Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Fertilizer application" },
-      { id: "W-005", name: "รัชนี", role: "QA Inspector", crew: "Harvest Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Harvest readiness checklist" },
-      { id: "W-006", name: "วิชัย", role: "Worker", crew: "General Farm Crew", status: "On Leave", farmId: "FARM-PRIMARY", currentTask: "ลาป่วย" },
+      { id: "W-001", name: "อนันต์", role: "หัวหน้าทีม", crew: "Crop Protection Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D03", currentTask: "Pest inspection" },
+      { id: "W-002", name: "มาลี", role: "หัวหน้าทีม", crew: "Irrigation Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D01", currentTask: "Inspect irrigation system" },
+      { id: "W-003", name: "สมพร", role: "พนักงานภาคสนาม", crew: "Harvest Crew", status: "Available", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Standby harvest prep" },
+      { id: "W-004", name: "กิตติ", role: "พนักงานภาคสนาม", crew: "General Farm Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Fertilizer application" },
+      { id: "W-005", name: "รัชนี", role: "เจ้าหน้าที่ QA", crew: "Harvest Crew", status: "Active", farmId: "FARM-PRIMARY", plot: "D04", currentTask: "Harvest readiness checklist" },
+      { id: "W-006", name: "วิชัย", role: "พนักงานภาคสนาม", crew: "General Farm Crew", status: "On Leave", farmId: "FARM-PRIMARY", currentTask: "ลาป่วย" },
     ],
     memberInvites: [
       { id: "INV-001", email: "niran@example.com", role: "พนักงาน", crew: "Harvest Crew", status: "Sent", sentAt: "2026-08-17T08:30:00" },
     ],
-    organizationRoles: [],
+    organizationRoles: defaultOrganizationRoles.map((role) => ({ ...role, permissions: [...role.permissions] })),
     iotDevices: [
       { id: "SM-D01-001", name: "Soil Moisture D01", type: "Soil moisture", plot: "D01", status: "Online", latestReading: "34%", numericValue: 34, unit: "%", lastCommunication: "1 minute ago", battery: 82, firmware: "1.8.2" },
       { id: "WS-FARM-001", name: "Weather Station", type: "Weather station", plot: "Farm", status: "Online", latestReading: "31.4°C / 74%", numericValue: 31.4, unit: "°C", lastCommunication: "2 minutes ago", battery: 94, firmware: "2.1.0" },
@@ -788,6 +969,8 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
     ],
     documentTypes: defaultDocumentTypes,
     documents: demoDocuments(isExport ? "EasyPlants Export Orchard" : "EasyPlants Demo Orchard"),
+    inventoryItems: demoInventoryItems(),
+    purchaseRequests: demoPurchaseRequests(),
     tutorialProgress: ["profile-ready"],
     phiScenario: {
       plot: "D04",
@@ -831,6 +1014,15 @@ function normalizeDemoState(stored: unknown): DemoState {
     (task as SmartTask).scheduledFor?.startsWith("2026-08-")
   );
   const savedRecommendations = Array.isArray(saved.recommendations) ? saved.recommendations : undefined;
+  const normalizedTasks = isLegacySchedule ? baseline.tasks : savedTasks
+    ? [
+        ...savedTasks.map((task) => {
+          const refreshed = baseline.tasks.find((item) => item.id === task.id);
+          return refreshed ? { ...refreshed, ...task, scheduledFor: refreshed.scheduledFor } : task;
+        }),
+        ...baseline.tasks.filter((task) => !savedTasks.some((savedTask) => savedTask.id === task.id)),
+      ]
+    : baseline.tasks;
   const normalizedRecommendations = savedRecommendations?.map((recommendation) => {
     const refreshed = baseline.recommendations.find((item) => item.id === recommendation.id);
     return refreshed && (recommendation.id === "R-001" || recommendation.id === "R-002") ? { ...recommendation, ...refreshed } : recommendation;
@@ -838,8 +1030,9 @@ function normalizeDemoState(stored: unknown): DemoState {
   const normalizedWorkers = Array.isArray(saved.workers) ? saved.workers.map((worker) => {
     const legacyStatus = (worker as WorkerProfile & { status?: string }).status;
     const status = legacyStatus === "Assigned" ? "Active" : legacyStatus === "Absent" ? "On Leave" : legacyStatus;
+    const role = ({ Supervisor: "หัวหน้าทีม", "Crew Lead": "หัวหน้าทีม", Worker: "พนักงานภาคสนาม", "QA Inspector": "เจ้าหน้าที่ QA" } as Record<string, string>)[worker.role] ?? worker.role;
     const { hoursToday: _hoursToday, ...workerWithoutHours } = worker as WorkerProfile & { hoursToday?: number };
-    return { ...workerWithoutHours, status } as WorkerProfile;
+    return { ...workerWithoutHours, role, status } as WorkerProfile;
   }) : baseline.workers;
   const savedTraceability = Array.isArray(saved.traceability) ? saved.traceability : [];
   const normalizedTraceability = [
@@ -855,19 +1048,26 @@ function normalizeDemoState(stored: unknown): DemoState {
     additionalFarms: Array.isArray(saved.additionalFarms) ? saved.additionalFarms : baseline.additionalFarms ?? [],
     sites: Array.isArray(saved.sites) ? saved.sites : baseline.sites,
     plots: Array.isArray(saved.plots) ? saved.plots : baseline.plots,
-    tasks: isLegacySchedule ? baseline.tasks : savedTasks ?? baseline.tasks,
+    tasks: normalizedTasks,
     recommendations: normalizedRecommendations ?? baseline.recommendations,
     productionPlans: Array.isArray(saved.productionPlans) ? saved.productionPlans : baseline.productionPlans,
     workOrders: Array.isArray(saved.workOrders) ? saved.workOrders : baseline.workOrders,
     workers: normalizedWorkers,
     memberInvites: Array.isArray(saved.memberInvites) ? saved.memberInvites : baseline.memberInvites,
-    organizationRoles: Array.isArray(saved.organizationRoles) ? saved.organizationRoles : baseline.organizationRoles,
+    organizationRoles: Array.isArray(saved.organizationRoles)
+      ? [
+          ...saved.organizationRoles.map((role) => ({ ...role, scope: role.scope ?? "assigned_farms" as const })),
+          ...baseline.organizationRoles.filter((role) => !saved.organizationRoles!.some((savedRole) => savedRole.id === role.id)),
+        ]
+      : baseline.organizationRoles,
     iotDevices: Array.isArray(saved.iotDevices) ? saved.iotDevices : baseline.iotDevices,
     iotRules: Array.isArray(saved.iotRules) ? saved.iotRules : baseline.iotRules,
     iotAlerts: Array.isArray(saved.iotAlerts) ? saved.iotAlerts : baseline.iotAlerts,
     traceability: normalizedTraceability,
     documentTypes: Array.isArray(saved.documentTypes) ? [...saved.documentTypes, ...baseline.documentTypes.filter((type) => !saved.documentTypes!.some((savedType) => savedType.id === type.id))] : baseline.documentTypes,
     documents: Array.isArray(saved.documents) ? [...saved.documents, ...baseline.documents.filter((document) => !saved.documents!.some((savedDocument) => savedDocument.id === document.id))] : baseline.documents,
+    inventoryItems: Array.isArray(saved.inventoryItems) ? [...saved.inventoryItems, ...baseline.inventoryItems.filter((item) => !saved.inventoryItems!.some((savedItem) => savedItem.id === item.id))] : baseline.inventoryItems,
+    purchaseRequests: Array.isArray(saved.purchaseRequests) ? [...saved.purchaseRequests, ...baseline.purchaseRequests.filter((request) => !saved.purchaseRequests!.some((savedRequest) => savedRequest.id === request.id))] : baseline.purchaseRequests,
     tutorialProgress: Array.isArray(saved.tutorialProgress) ? saved.tutorialProgress : baseline.tutorialProgress,
     workforce: { ...baseline.workforce, ...(saved.workforce ?? {}) },
     weather: { ...baseline.weather, ...(saved.weather ?? {}) },
@@ -884,6 +1084,20 @@ export function saveDemoState(state: DemoState) {
 }
 
 export function switchDemoPersona(personaId: DemoPersonaId) {
+  const current = getDemoState();
+  if (personaId === "employee" && (current.personaId === "commercial" || current.personaId === "export")) {
+    window.localStorage.setItem(EMPLOYEE_PARENT_PERSONA_KEY, current.personaId);
+    saveDemoState({ ...current, personaId });
+    return;
+  }
+  if (current.personaId === "employee") {
+    const parentPersona = window.localStorage.getItem(EMPLOYEE_PARENT_PERSONA_KEY);
+    if (personaId === parentPersona) {
+      saveDemoState({ ...current, personaId });
+      return;
+    }
+  }
+  window.localStorage.removeItem(EMPLOYEE_PARENT_PERSONA_KEY);
   const state = buildDemoState(personaId);
   saveDemoState(state);
 }

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Building2, CheckCircle2, ClipboardList, Cpu, PackageSearch, ShieldCheck, Tractor, UsersRound } from "lucide-react";
 import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
-import { getWorkOrderCompletionIssue } from "@/lib/dragonfly-data";
+import { getInventoryDaysRemaining, getInventoryStatus, getWorkOrderCompletionIssue } from "@/lib/dragonfly-data";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
 import { ProAccessGate } from "@/components/ProAccessGate";
 
@@ -25,18 +25,7 @@ function OperationsPage() {
     .map((order) => ({ order, issue: getWorkOrderCompletionIssue(state, order) }))
     .filter((item) => item.issue);
   const openOrders = scopedOrders.filter((order) => !["Completed", "Approved"].includes(order.status));
-  const isPrimaryFarm = activeDashboardFarm.id === "FARM-PRIMARY";
-  const inventory = isPrimaryFarm
-    ? [
-        { name: "ปุ๋ย 15-15-15", stock: "18 / 40 กระสอบ", status: "Low", note: "พอใช้ 3 วัน" },
-        { name: "ชีวภัณฑ์ป้องกันโรค", stock: "12 / 12 ขวด", status: "OK", note: "พร้อมใช้งาน" },
-        { name: "เชื้อเพลิง", stock: "220 / 600 ลิตร", status: "Watch", note: "ควรสั่งรอบถัดไป" },
-      ]
-    : [
-        { name: "ปุ๋ยตามแผนฤดูกาล", stock: activeDashboardFarm.status === "Needs attention" ? "6 / 40 กระสอบ" : "31 / 40 กระสอบ", status: activeDashboardFarm.status === "Needs attention" ? "Low" : "OK", note: activeDashboardFarm.status === "Needs attention" ? "ต้องอนุมัติสั่งซื้อ" : "พร้อมใช้งาน" },
-        { name: "วัสดุเก็บเกี่ยว", stock: "74 / 100 ชุด", status: "OK", note: "พร้อมใช้" },
-        { name: "เชื้อเพลิง", stock: "410 / 600 ลิตร", status: "OK", note: "อยู่ในเกณฑ์" },
-      ];
+  const inventory = state.inventoryItems.filter((item) => item.farmId === activeDashboardFarm.id && (siteId === "ทั้งหมด" || item.siteId === siteId));
   const machines = [
     { name: "ปั๊มน้ำหลัก", state: "พร้อมใช้", note: "ตรวจล่าสุด 07:30" },
     { name: "รถแทรกเตอร์ 01", state: activeDashboardFarm.status === "Needs attention" ? "รอซ่อม" : "พร้อมใช้", note: activeDashboardFarm.status === "Needs attention" ? "นัดช่าง 14:00" : "บำรุงรักษาครั้งถัดไป 12 ก.ย." },
@@ -108,9 +97,9 @@ function OperationsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section><SectionTitle>ทีมและความคืบหน้า</SectionTitle><Card className="space-y-3">{state.workforce.crews.map((crew) => { const crewTasks = scopedTasks.filter((task) => task.team === crew.name); const delayed = crewTasks.filter((task) => task.status === "Delayed").length; return <div key={crew.name} className="border-b border-border pb-3 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{crew.name}</p><Badge tone={delayed ? "bad" : "info"}>{delayed ? `${delayed} งานล่าช้า` : `${crewTasks.length} งาน`}</Badge></div><p className="mt-1 text-xs text-muted-foreground">กำลังทำ {crewTasks.filter((task) => task.status === "In Progress").length} · รอมอบหมาย {crewTasks.filter((task) => task.status === "Assigned").length} · {crew.status}</p></div>; })}</Card></section>
-        <section><SectionTitle>สต็อกและการจัดซื้อ</SectionTitle><Card className="space-y-3">{inventory.map((item) => <div key={item.name} className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{item.name}</p><p className="text-xs text-muted-foreground">{item.stock} · {item.note}</p></div><Badge tone={item.status === "Low" ? "bad" : item.status === "Watch" ? "warn" : "good"}>{item.status === "Low" ? "ต้องสั่ง" : item.status === "Watch" ? "เฝ้าดู" : "พร้อม"}</Badge></div>)}</Card></section>
+        <section><SectionTitle action={<Link to="/inventory" className="text-xs font-semibold text-primary">จัดการ</Link>}>สต็อกและการจัดซื้อ</SectionTitle><Card className="space-y-3">{inventory.slice(0, 4).map((item) => { const status = getInventoryStatus(item); const days = getInventoryDaysRemaining(item); return <div key={item.id} className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{item.name}</p><p className="text-xs text-muted-foreground">{item.onHand} / {item.targetStock} {item.unit}{days !== undefined ? ` · พอใช้ ${days} วัน` : ""}</p></div><Badge tone={status === "order" ? "bad" : status === "watch" ? "warn" : "good"}>{status === "order" ? "ต้องสั่ง" : status === "watch" ? "เฝ้าดู" : "พร้อม"}</Badge></div>; })}{inventory.length === 0 ? <p className="text-xs text-muted-foreground">ยังไม่มีรายการสต็อกในขอบเขตนี้</p> : null}<Link to="/inventory" className="block rounded-lg border border-primary/25 bg-primary-soft/45 py-2 text-center text-xs font-semibold text-primary">เปิดคลัง ใบขอซื้อ และการอนุมัติ</Link></Card></section>
         <section><SectionTitle>เครื่องจักรและอุปกรณ์</SectionTitle><Card className="space-y-3">{machines.map((machine) => <div key={machine.name} className="flex items-start gap-2"><Tractor className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-sm font-semibold">{machine.name} · <span className={machine.state === "รอซ่อม" ? "text-destructive" : "text-primary"}>{machine.state}</span></p><p className="text-xs text-muted-foreground">{machine.note}</p></div></div>)}</Card></section>
-        <section><SectionTitle>ข้อมูลและการเชื่อมต่อ</SectionTitle><Card className="space-y-3"><div className="flex gap-2"><Cpu className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">IoT online {state.iotDevices.filter((device) => device.status === "Online").length}/{state.iotDevices.length}</p><p className="text-xs text-muted-foreground">ข้อมูลอุปกรณ์ใน Demo Mode</p></div></div><div className="flex gap-2"><PackageSearch className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">บันทึกสต็อกแบบ Demo</p><p className="text-xs text-muted-foreground">การเชื่อม ERP และการตัดสต็อกจริงต้องตั้งค่าฐานข้อมูล</p></div></div></Card></section>
+        <section><SectionTitle>ข้อมูลและการเชื่อมต่อ</SectionTitle><Card className="space-y-3"><div className="flex gap-2"><Cpu className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">IoT online {state.iotDevices.filter((device) => device.status === "Online").length}/{state.iotDevices.length}</p><p className="text-xs text-muted-foreground">ข้อมูลอุปกรณ์ใน Demo Mode</p></div></div><div className="flex gap-2"><PackageSearch className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">คลัง {inventory.length} รายการ · ใบขอซื้อ {state.purchaseRequests.filter((request) => request.farmId === activeDashboardFarm.id).length}</p><p className="text-xs text-muted-foreground">Demo Mode บันทึกใน Local Storage; production ต้องเชื่อมฐานข้อมูลและ ERP</p></div></div></Card></section>
       </div>
 
       <Card className="flex items-center justify-between gap-3 bg-muted/50"><div><p className="text-sm font-semibold">งานในปฏิทิน {scopedTasks.length} รายการ</p><p className="text-xs text-muted-foreground">ดูระดับงานรายคนได้จาก Workforce</p></div><ClipboardList className="size-5 text-primary" /></Card>

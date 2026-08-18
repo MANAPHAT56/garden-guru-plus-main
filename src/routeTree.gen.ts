@@ -20,6 +20,7 @@ import { Route as DiagnoseRouteImport } from './routes/diagnose'
 import { Route as DisasterRouteImport } from './routes/disaster'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as FarmProRouteImport } from './routes/farm-pro'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as IotRouteImport } from './routes/iot'
 import { Route as IotGuideRouteImport } from './routes/iot-guide'
 import { Route as MarketRouteImport } from './routes/market'
@@ -91,6 +92,11 @@ const DocumentsRoute = DocumentsRouteImport.update({
 const FarmProRoute = FarmProRouteImport.update({
   id: '/farm-pro',
   path: '/farm-pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IotRoute = IotRouteImport.update({
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/disaster': typeof DisasterRoute
   '/documents': typeof DocumentsRoute
   '/farm-pro': typeof FarmProRoute
+  '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
   '/market': typeof MarketRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/disaster': typeof DisasterRoute
   '/documents': typeof DocumentsRoute
   '/farm-pro': typeof FarmProRoute
+  '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
   '/market': typeof MarketRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/disaster': typeof DisasterRoute
   '/documents': typeof DocumentsRoute
   '/farm-pro': typeof FarmProRoute
+  '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
   '/market': typeof MarketRoute
@@ -284,6 +293,7 @@ export interface FileRouteTypes {
     | '/disaster'
     | '/documents'
     | '/farm-pro'
+    | '/inventory'
     | '/iot'
     | '/iot-guide'
     | '/market'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/disaster'
     | '/documents'
     | '/farm-pro'
+    | '/inventory'
     | '/iot'
     | '/iot-guide'
     | '/market'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/disaster'
     | '/documents'
     | '/farm-pro'
+    | '/inventory'
     | '/iot'
     | '/iot-guide'
     | '/market'
@@ -375,6 +387,7 @@ export interface RootRouteChildren {
   DisasterRoute: typeof DisasterRoute
   DocumentsRoute: typeof DocumentsRoute
   FarmProRoute: typeof FarmProRoute
+  InventoryRoute: typeof InventoryRoute
   IotRoute: typeof IotRoute
   IotGuideRoute: typeof IotGuideRoute
   MarketRoute: typeof MarketRoute
@@ -471,6 +484,13 @@ declare module '@tanstack/react-router' {
       path: '/farm-pro'
       fullPath: '/farm-pro'
       preLoaderRoute: typeof FarmProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iot': {
@@ -607,6 +627,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisasterRoute: DisasterRoute,
   DocumentsRoute: DocumentsRoute,
   FarmProRoute: FarmProRoute,
+  InventoryRoute: InventoryRoute,
   IotRoute: IotRoute,
   IotGuideRoute: IotGuideRoute,
   MarketRoute: MarketRoute,

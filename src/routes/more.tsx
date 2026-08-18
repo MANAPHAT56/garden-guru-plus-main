@@ -19,6 +19,7 @@ import {
   Settings,
   ClipboardCheck,
   FolderOpen,
+  Boxes,
 } from "lucide-react";
 import { AppShell, Card, SectionTitle } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
@@ -73,6 +74,7 @@ const coreMenu = [
 const proMenu = [
   { to: "/farm-pro", icon: Factory, label: "งานและทีม", desc: "งาน คนในทีม และแผนผลิตในหน้าเดียว" },
   { to: "/operations", icon: Building2, label: "ศูนย์ปฏิบัติการ 360", desc: "ฟาร์ม โซน งาน สต็อก และ compliance" },
+  { to: "/inventory", icon: Boxes, label: "คลังและการจัดซื้อ", desc: "สต็อก ใบขอซื้อ อนุมัติ PO และรับสินค้า" },
   { to: "/traceability", icon: RouteIcon, label: "Traceability", desc: "ค้นหา Lot และประวัติการผลิต" },
   { to: "/documents", icon: FolderOpen, label: "ศูนย์เอกสาร", desc: "ไฟล์ PHI, QA, ใบรับรอง และรายงาน" },
   { to: "/reports", icon: FileText, label: "รายงาน", desc: "PDF Excel และกราฟ" },
