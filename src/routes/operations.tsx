@@ -1,0 +1,120 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Building2, CheckCircle2, ClipboardList, Cpu, PackageSearch, ShieldCheck, Tractor, UsersRound } from "lucide-react";
+import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
+import { getWorkOrderCompletionIssue } from "@/lib/dragonfly-data";
+import { useDragonflyData } from "@/hooks/useDragonflyData";
+import { ProAccessGate } from "@/components/ProAccessGate";
+
+export const Route = createFileRoute("/operations")({
+  head: () => ({ meta: [{ title: "ศูนย์ควบคุมสวน — EasyPlants" }] }),
+  component: OperationsPage,
+});
+
+function OperationsPage() {
+  const { persona, state, dashboardFarms, activeDashboardFarm, setActiveDashboardFarm } = useDragonflyData();
+  const [siteId, setSiteId] = useState("ทั้งหมด");
+  const [period, setPeriod] = useState("วันนี้");
+  const hasPro = persona.subscription === "Farm Pro";
+  const selectedSite = state.sites.find((site) => site.id === siteId);
+  const isInScope = (plot?: string) => !selectedSite || selectedSite.plotPrefixes.some((prefix) => plot?.startsWith(prefix));
+  const scopedOrders = useMemo(() => state.workOrders.filter((order) => isInScope(order.plot)), [state.workOrders, siteId]);
+  const scopedTasks = useMemo(() => state.tasks.filter((task) => isInScope(task.plot)), [state.tasks, siteId]);
+  const scopedWorkers = useMemo(() => state.workers.filter((worker) => isInScope(worker.plot)), [state.workers, siteId]);
+  const issues = scopedOrders
+    .map((order) => ({ order, issue: getWorkOrderCompletionIssue(state, order) }))
+    .filter((item) => item.issue);
+  const openOrders = scopedOrders.filter((order) => !["Completed", "Approved"].includes(order.status));
+  const isPrimaryFarm = activeDashboardFarm.id === "FARM-PRIMARY";
+  const inventory = isPrimaryFarm
+    ? [
+        { name: "ปุ๋ย 15-15-15", stock: "18 / 40 กระสอบ", status: "Low", note: "พอใช้ 3 วัน" },
+        { name: "ชีวภัณฑ์ป้องกันโรค", stock: "12 / 12 ขวด", status: "OK", note: "พร้อมใช้งาน" },
+        { name: "เชื้อเพลิง", stock: "220 / 600 ลิตร", status: "Watch", note: "ควรสั่งรอบถัดไป" },
+      ]
+    : [
+        { name: "ปุ๋ยตามแผนฤดูกาล", stock: activeDashboardFarm.status === "Needs attention" ? "6 / 40 กระสอบ" : "31 / 40 กระสอบ", status: activeDashboardFarm.status === "Needs attention" ? "Low" : "OK", note: activeDashboardFarm.status === "Needs attention" ? "ต้องอนุมัติสั่งซื้อ" : "พร้อมใช้งาน" },
+        { name: "วัสดุเก็บเกี่ยว", stock: "74 / 100 ชุด", status: "OK", note: "พร้อมใช้" },
+        { name: "เชื้อเพลิง", stock: "410 / 600 ลิตร", status: "OK", note: "อยู่ในเกณฑ์" },
+      ];
+  const machines = [
+    { name: "ปั๊มน้ำหลัก", state: "พร้อมใช้", note: "ตรวจล่าสุด 07:30" },
+    { name: "รถแทรกเตอร์ 01", state: activeDashboardFarm.status === "Needs attention" ? "รอซ่อม" : "พร้อมใช้", note: activeDashboardFarm.status === "Needs attention" ? "นัดช่าง 14:00" : "บำรุงรักษาครั้งถัดไป 12 ก.ย." },
+    { name: "เครื่องพ่น", state: "พร้อมใช้", note: "ผ่านการตรวจอุปกรณ์" },
+  ];
+
+  if (!hasPro) {
+    return <AppShell title="ศูนย์ปฏิบัติการ 360" subtitle="มุมมองรวมสำหรับผู้จัดการสวน"><ProAccessGate feature="ศูนย์ปฏิบัติการ 360" detail="รวมหลายฟาร์ม หลายโซน ทีม งาน สต็อก และการตรวจรับในมุมมองผู้จัดการ" /></AppShell>;
+  }
+
+  return (
+    <AppShell title="ศูนย์ปฏิบัติการ 360" subtitle={hasPro ? "ฟาร์ม → แปลง → งาน → ทรัพยากร → การตรวจรับ" : "ตัวอย่างการบริหารสวนองค์กรใน Farm Pro"}>
+      <Card className="border-primary/25 bg-primary-soft/45 p-4">
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="block text-xs font-semibold text-primary">ฟาร์มที่กำลังดู
+            <select value={activeDashboardFarm.id} onChange={(event) => setActiveDashboardFarm(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary">
+              {dashboardFarms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name} · {farm.location}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-primary">ขอบเขตพื้นที่
+            <select value={siteId} onChange={(event) => setSiteId(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary">
+              <option value="ทั้งหมด">ทุกโซนในฟาร์ม</option>
+              {state.sites.map((site) => <option key={site.id} value={site.id}>{site.code} · {site.name}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-primary">ช่วงเวลาปฏิบัติการ
+            <select value={period} onChange={(event) => setPeriod(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary">
+              <option>วันนี้</option><option>7 วันข้างหน้า</option><option>เดือนนี้</option><option>กำหนดเอง</option>
+            </select>
+          </label>
+        </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">{activeDashboardFarm.dataLabel} · ตัวกรองนี้กำหนดขอบเขตของสรุปในหน้านี้ ไม่ผสมตัวเลขระหว่างฟาร์ม</p>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-2 text-center md:grid-cols-4">
+        <Card><Building2 className="mx-auto size-5 text-primary" /><p className="mt-1 text-lg font-bold">{state.sites.length}</p><p className="text-[10px] text-muted-foreground">โซนงาน</p></Card>
+        <Card><UsersRound className="mx-auto size-5 text-primary" /><p className="mt-1 text-lg font-bold">{scopedWorkers.length}</p><p className="text-[10px] text-muted-foreground">คนในขอบเขต</p></Card>
+        <Card><AlertTriangle className="mx-auto size-5 text-destructive" /><p className="mt-1 text-lg font-bold">{issues.length}</p><p className="text-[10px] text-muted-foreground">ต้องตัดสินใจ</p></Card>
+        <Card><ShieldCheck className="mx-auto size-5 text-primary" /><p className="mt-1 text-lg font-bold">{issues.length ? "1" : "0"}</p><p className="text-[10px] text-muted-foreground">Compliance risk</p></Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+      <section>
+      <SectionTitle>โครงสร้างสวน</SectionTitle>
+      <div className="space-y-2">
+        {state.sites.filter((site) => siteId === "ทั้งหมด" || site.id === siteId).map((site) => (
+          <Card key={site.id} className="flex items-start justify-between gap-3">
+            <div className="min-w-0"><p className="text-sm font-semibold">{site.code} · {site.name}</p><p className="mt-1 text-xs text-muted-foreground">{site.type} · {site.areaRai.toLocaleString("th-TH")} ไร่ · ผู้ดูแล {site.manager}</p></div>
+            <Badge tone={site.status === "Normal" ? "good" : site.status === "Blocked" ? "bad" : "warn"}>{site.status === "Normal" ? "ปกติ" : site.status === "Blocked" ? "ติดขัด" : "ต้องดู"}</Badge>
+          </Card>
+        ))}
+      </div>
+      </section>
+
+      <section>
+      <SectionTitle>งานที่ผู้จัดการต้องตัดสินใจ</SectionTitle>
+      {issues.length > 0 ? <>
+        <SectionTitle>กฎที่กำลังบล็อกงาน</SectionTitle>
+        {issues.map(({ order, issue }) => <Card key={order.id} className="border-destructive/30 bg-destructive/10"><p className="text-sm font-semibold text-destructive">{order.id} · {order.title}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{issue}</p></Card>)}
+      </> : null}
+
+      <SectionTitle>คิวงานของโซน · {period}</SectionTitle>
+      <div className="space-y-2">
+        {openOrders.slice(0, 4).map((order) => <Card key={order.id} className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{order.title}</p><p className="text-xs text-muted-foreground">{order.plot} · {order.team}</p></div><Badge tone={order.status === "Delayed" ? "bad" : "info"}>{order.status}</Badge></Card>)}
+        {openOrders.length === 0 ? <Card className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="size-5 text-primary" />ไม่มี Work Order ค้างในขอบเขตนี้</Card> : null}
+      </div>
+      </section>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section><SectionTitle>ทีมและความคืบหน้า</SectionTitle><Card className="space-y-3">{state.workforce.crews.map((crew) => { const crewTasks = scopedTasks.filter((task) => task.team === crew.name); const delayed = crewTasks.filter((task) => task.status === "Delayed").length; return <div key={crew.name} className="border-b border-border pb-3 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{crew.name}</p><Badge tone={delayed ? "bad" : "info"}>{delayed ? `${delayed} งานล่าช้า` : `${crewTasks.length} งาน`}</Badge></div><p className="mt-1 text-xs text-muted-foreground">กำลังทำ {crewTasks.filter((task) => task.status === "In Progress").length} · รอมอบหมาย {crewTasks.filter((task) => task.status === "Assigned").length} · {crew.status}</p></div>; })}</Card></section>
+        <section><SectionTitle>สต็อกและการจัดซื้อ</SectionTitle><Card className="space-y-3">{inventory.map((item) => <div key={item.name} className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{item.name}</p><p className="text-xs text-muted-foreground">{item.stock} · {item.note}</p></div><Badge tone={item.status === "Low" ? "bad" : item.status === "Watch" ? "warn" : "good"}>{item.status === "Low" ? "ต้องสั่ง" : item.status === "Watch" ? "เฝ้าดู" : "พร้อม"}</Badge></div>)}</Card></section>
+        <section><SectionTitle>เครื่องจักรและอุปกรณ์</SectionTitle><Card className="space-y-3">{machines.map((machine) => <div key={machine.name} className="flex items-start gap-2"><Tractor className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-sm font-semibold">{machine.name} · <span className={machine.state === "รอซ่อม" ? "text-destructive" : "text-primary"}>{machine.state}</span></p><p className="text-xs text-muted-foreground">{machine.note}</p></div></div>)}</Card></section>
+        <section><SectionTitle>ข้อมูลและการเชื่อมต่อ</SectionTitle><Card className="space-y-3"><div className="flex gap-2"><Cpu className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">IoT online {state.iotDevices.filter((device) => device.status === "Online").length}/{state.iotDevices.length}</p><p className="text-xs text-muted-foreground">ข้อมูลอุปกรณ์ใน Demo Mode</p></div></div><div className="flex gap-2"><PackageSearch className="size-4 shrink-0 text-primary" /><div><p className="text-sm font-semibold">บันทึกสต็อกแบบ Demo</p><p className="text-xs text-muted-foreground">การเชื่อม ERP และการตัดสต็อกจริงต้องตั้งค่าฐานข้อมูล</p></div></div></Card></section>
+      </div>
+
+      <Card className="flex items-center justify-between gap-3 bg-muted/50"><div><p className="text-sm font-semibold">งานในปฏิทิน {scopedTasks.length} รายการ</p><p className="text-xs text-muted-foreground">ดูระดับงานรายคนได้จาก Workforce</p></div><ClipboardList className="size-5 text-primary" /></Card>
+      <div className="grid grid-cols-2 gap-3 md:max-w-md"><Link to="/workers" className="rounded-xl border border-border py-3 text-center text-sm font-semibold">Workforce</Link><Link to="/farm-pro" className="rounded-xl bg-primary py-3 text-center text-sm font-semibold text-primary-foreground">Work Orders</Link></div>
+    </AppShell>
+  );
+}
