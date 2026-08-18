@@ -23,6 +23,7 @@ import { Route as FarmProRouteImport } from './routes/farm-pro'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as IotRouteImport } from './routes/iot'
 import { Route as IotGuideRouteImport } from './routes/iot-guide'
+import { Route as MachineryRouteImport } from './routes/machinery'
 import { Route as MarketRouteImport } from './routes/market'
 import { Route as MonitorRouteImport } from './routes/monitor'
 import { Route as MoreRouteImport } from './routes/more'
@@ -107,6 +108,11 @@ const IotRoute = IotRouteImport.update({
 const IotGuideRoute = IotGuideRouteImport.update({
   id: '/iot-guide',
   path: '/iot-guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MachineryRoute = MachineryRouteImport.update({
+  id: '/machinery',
+  path: '/machinery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketRoute = MarketRouteImport.update({
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
+  '/machinery': typeof MachineryRoute
   '/market': typeof MarketRoute
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
+  '/machinery': typeof MachineryRoute
   '/market': typeof MarketRoute
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/iot': typeof IotRoute
   '/iot-guide': typeof IotGuideRoute
+  '/machinery': typeof MachineryRoute
   '/market': typeof MarketRoute
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/iot'
     | '/iot-guide'
+    | '/machinery'
     | '/market'
     | '/monitor'
     | '/more'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/iot'
     | '/iot-guide'
+    | '/machinery'
     | '/market'
     | '/monitor'
     | '/more'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/iot'
     | '/iot-guide'
+    | '/machinery'
     | '/market'
     | '/monitor'
     | '/more'
@@ -390,6 +402,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   IotRoute: typeof IotRoute
   IotGuideRoute: typeof IotGuideRoute
+  MachineryRoute: typeof MachineryRoute
   MarketRoute: typeof MarketRoute
   MonitorRoute: typeof MonitorRoute
   MoreRoute: typeof MoreRoute
@@ -505,6 +518,13 @@ declare module '@tanstack/react-router' {
       path: '/iot-guide'
       fullPath: '/iot-guide'
       preLoaderRoute: typeof IotGuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/machinery': {
+      id: '/machinery'
+      path: '/machinery'
+      fullPath: '/machinery'
+      preLoaderRoute: typeof MachineryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/market': {
@@ -630,6 +650,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   IotRoute: IotRoute,
   IotGuideRoute: IotGuideRoute,
+  MachineryRoute: MachineryRoute,
   MarketRoute: MarketRoute,
   MonitorRoute: MonitorRoute,
   MoreRoute: MoreRoute,

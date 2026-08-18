@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   FolderOpen,
   Boxes,
+  Wrench,
 } from "lucide-react";
 import { AppShell, Card, SectionTitle } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
@@ -73,10 +74,36 @@ const coreMenu = [
 
 const proMenu = [
   { to: "/farm-pro", icon: Factory, label: "งานและทีม", desc: "งาน คนในทีม และแผนผลิตในหน้าเดียว" },
-  { to: "/operations", icon: Building2, label: "ศูนย์ปฏิบัติการ 360", desc: "ฟาร์ม โซน งาน สต็อก และ compliance" },
-  { to: "/inventory", icon: Boxes, label: "คลังและการจัดซื้อ", desc: "สต็อก ใบขอซื้อ อนุมัติ PO และรับสินค้า" },
-  { to: "/traceability", icon: RouteIcon, label: "Traceability", desc: "ค้นหา Lot และประวัติการผลิต" },
-  { to: "/documents", icon: FolderOpen, label: "ศูนย์เอกสาร", desc: "ไฟล์ PHI, QA, ใบรับรอง และรายงาน" },
+  {
+    to: "/operations",
+    icon: Building2,
+    label: "ศูนย์ปฏิบัติการ 360",
+    desc: "ฟาร์ม โซน งาน สต็อก และ compliance",
+  },
+  {
+    to: "/inventory",
+    icon: Boxes,
+    label: "คลังและการจัดซื้อ",
+    desc: "สต็อก ใบขอซื้อ อนุมัติ PO และรับสินค้า",
+  },
+  {
+    to: "/machinery",
+    icon: Wrench,
+    label: "เครื่องจักรและการบำรุง",
+    desc: "ทะเบียน ตรวจเช็ก แจ้งซ่อม และประวัติบำรุง",
+  },
+  {
+    to: "/traceability",
+    icon: RouteIcon,
+    label: "Traceability",
+    desc: "ค้นหา Lot และประวัติการผลิต",
+  },
+  {
+    to: "/documents",
+    icon: FolderOpen,
+    label: "ศูนย์เอกสาร",
+    desc: "ไฟล์ PHI, QA, ใบรับรอง และรายงาน",
+  },
   { to: "/reports", icon: FileText, label: "รายงาน", desc: "PDF Excel และกราฟ" },
 ] as const;
 
@@ -93,17 +120,47 @@ function MorePage() {
   const hasPro = persona.subscription === "Farm Pro";
   const isEmployee = persona.id === "employee";
   const visibleCoreMenu = isEmployee
-    ? coreMenu.filter((item) => ["/weather", "/calendar", "/disaster", "/monitor"].includes(item.to))
-    : isBeginner ? coreMenu : coreMenu.filter((item) => item.to !== "/academy");
-  const visibleTechMenu = isEmployee ? techMenu.filter((item) => ["/notifications", "/community"].includes(item.to)) : techMenu;
+    ? coreMenu.filter((item) =>
+        ["/weather", "/calendar", "/disaster", "/monitor"].includes(item.to),
+      )
+    : isBeginner
+      ? coreMenu
+      : coreMenu.filter((item) => item.to !== "/academy");
+  const visibleTechMenu = isEmployee
+    ? techMenu.filter((item) => ["/notifications", "/community"].includes(item.to))
+    : techMenu;
   return (
     <AppShell
       title="เมนูทั้งหมด"
       subtitle={`${persona.profile.knowledgeLevel} · ${persona.profile.operationScale}`}
     >
       <ExperienceProgression persona={persona} onAdvance={setPersona} />
-      <SectionTitle>{persona.id === "employee" ? "งานภาคสนาม" : "งานส่วนตัว"}</SectionTitle><Link to="/my-work"><Card className="border-primary/30 bg-primary-soft/45"><ClipboardCheck className="size-6 text-primary" /><p className="mt-2 text-sm font-semibold">งานของฉัน</p><p className="text-xs text-muted-foreground">{persona.id === "employee" ? "เช็กอิน รับงาน ส่งงาน และรายงานอุปสรรค" : "Todo ส่วนตัวที่สร้างจากปฏิทิน"}</p></Card></Link>
-      {persona.id === "owner" ? <><SectionTitle>ทีมของฉัน</SectionTitle><Link to="/workers"><Card className="border-primary/25 bg-primary-soft/45"><Users className="size-6 text-primary" /><p className="mt-2 text-sm font-semibold">สมาชิกและผู้ช่วยสวน</p><p className="text-xs text-muted-foreground">เพิ่มผู้ช่วย ดูงานที่รับผิดชอบ และเตรียมพร้อมก่อนใช้ Workforce</p></Card></Link></> : null}
+      <SectionTitle>{persona.id === "employee" ? "งานภาคสนาม" : "งานส่วนตัว"}</SectionTitle>
+      <Link to="/my-work">
+        <Card className="border-primary/30 bg-primary-soft/45">
+          <ClipboardCheck className="size-6 text-primary" />
+          <p className="mt-2 text-sm font-semibold">งานของฉัน</p>
+          <p className="text-xs text-muted-foreground">
+            {persona.id === "employee"
+              ? "เช็กอิน รับงาน ส่งงาน และรายงานอุปสรรค"
+              : "Todo ส่วนตัวที่สร้างจากปฏิทิน"}
+          </p>
+        </Card>
+      </Link>
+      {persona.id === "owner" ? (
+        <>
+          <SectionTitle>ทีมของฉัน</SectionTitle>
+          <Link to="/workers">
+            <Card className="border-primary/25 bg-primary-soft/45">
+              <Users className="size-6 text-primary" />
+              <p className="mt-2 text-sm font-semibold">สมาชิกและผู้ช่วยสวน</p>
+              <p className="text-xs text-muted-foreground">
+                เพิ่มผู้ช่วย ดูงานที่รับผิดชอบ และเตรียมพร้อมก่อนใช้ Workforce
+              </p>
+            </Card>
+          </Link>
+        </>
+      ) : null}
       <SectionTitle>{isBeginner ? "เริ่มจัดการสวน" : "Smart Farming"}</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
         {visibleCoreMenu.map((m) => (
@@ -119,29 +176,35 @@ function MorePage() {
         ))}
       </div>
 
-      {!isEmployee ? <><SectionTitle>{hasPro ? "Farm Pro" : "ปลดล็อก Farm Pro"}</SectionTitle>
-      {!hasPro ? (
-        <Card className="border-primary/30 bg-primary-soft/50">
-          <p className="text-sm font-semibold text-primary">เครื่องมือสำหรับสวนเชิงพาณิชย์</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            ใช้เมื่อเริ่มมีหลายแปลง หลายคน หรืออยากควบคุมล็อตผลิตอย่างเป็นระบบ ฟีเจอร์ถูกล็อกจนกว่าจะสมัคร Farm Pro
-          </p>
-        </Card>
-      ) : null}
-      <div className="grid grid-cols-2 gap-3">
-        {(isBeginner ? proMenu.slice(0, 1) : proMenu).map((m) => (
-          <Link key={m.to} to={hasPro ? m.to : "/onboarding"}>
-            <Card className={`h-full ${hasPro ? "" : "opacity-70"}`}>
-              <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                <m.icon className="size-5" strokeWidth={2} />
-              </span>
-              <p className="mt-2 text-sm font-semibold">{m.label}</p>
-              <p className="text-xs text-muted-foreground">{hasPro ? m.desc : `ล็อกใน Farm Pro · ${m.desc}`}</p>
+      {!isEmployee ? (
+        <>
+          <SectionTitle>{hasPro ? "Farm Pro" : "ปลดล็อก Farm Pro"}</SectionTitle>
+          {!hasPro ? (
+            <Card className="border-primary/30 bg-primary-soft/50">
+              <p className="text-sm font-semibold text-primary">เครื่องมือสำหรับสวนเชิงพาณิชย์</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ใช้เมื่อเริ่มมีหลายแปลง หลายคน หรืออยากควบคุมล็อตผลิตอย่างเป็นระบบ
+                ฟีเจอร์ถูกล็อกจนกว่าจะสมัคร Farm Pro
+              </p>
             </Card>
-          </Link>
-        ))}
-      </div>
-      </> : null}
+          ) : null}
+          <div className="grid grid-cols-2 gap-3">
+            {(isBeginner ? proMenu.slice(0, 1) : proMenu).map((m) => (
+              <Link key={m.to} to={hasPro ? m.to : "/onboarding"}>
+                <Card className={`h-full ${hasPro ? "" : "opacity-70"}`}>
+                  <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+                    <m.icon className="size-5" strokeWidth={2} />
+                  </span>
+                  <p className="mt-2 text-sm font-semibold">{m.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasPro ? m.desc : `ล็อกใน Farm Pro · ${m.desc}`}
+                  </p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <SectionTitle>Technology & System</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
@@ -164,7 +227,8 @@ function MorePage() {
         <div>
           <p className="text-sm font-semibold">{state.farm.name}</p>
           <p className="text-xs text-muted-foreground">
-            {state.farm.plotCount} แปลง · {state.farm.areaRai.toLocaleString("th-TH")} ไร่ · {state.farm.workerCount} คน
+            {state.farm.plotCount} แปลง · {state.farm.areaRai.toLocaleString("th-TH")} ไร่ ·{" "}
+            {state.farm.workerCount} คน
           </p>
         </div>
       </Card>
