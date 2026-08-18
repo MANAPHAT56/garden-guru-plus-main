@@ -36,6 +36,7 @@ export function useDragonflyData() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const update = () => setState(getDemoState());
+    update();
     window.addEventListener("dragonfly_demo_state_updated", update);
     return () => window.removeEventListener("dragonfly_demo_state_updated", update);
   }, []);
@@ -283,6 +284,11 @@ export function useDragonflyData() {
     persist({ ...state, documents: state.documents.map((document) => document.id === documentId ? { ...document, status, approvedBy: status === "Approved" ? approvedBy : document.approvedBy } : document) });
   };
 
+  const completeTutorialStep = (stepIds: string | string[]) => {
+    const completedIds = Array.isArray(stepIds) ? stepIds : [stepIds];
+    persist({ ...state, tutorialProgress: [...new Set([...state.tutorialProgress, ...completedIds])] });
+  };
+
   return {
     mode: appDataMode,
     isDemoMode,
@@ -310,5 +316,6 @@ export function useDragonflyData() {
     addDocumentType,
     addDocument,
     updateDocumentStatus,
+    completeTutorialStep,
   };
 }

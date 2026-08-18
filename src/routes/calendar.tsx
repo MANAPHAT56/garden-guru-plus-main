@@ -198,6 +198,7 @@ function CalendarPage() {
         </Card>
 
         {canCreatePersonalTask || canCreateTeamTask ? <button
+          data-tour="calendar-create-task"
           onClick={() => { setSmartTaskPlot(scopedTaskPlots[0]?.id ?? ""); setSmartTaskOrigin(canCreateTeamTask ? "team" : "personal"); setSmartTaskWorkerId(""); setSmartTaskDate(new Date().toISOString().slice(0, 10)); setShowSmartTaskForm((value) => !value); }}
           className="bg-primary flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-primary-foreground cursor-pointer active:scale-[0.98]"
         >

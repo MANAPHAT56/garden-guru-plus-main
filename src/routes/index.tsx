@@ -75,34 +75,41 @@ function Dashboard() {
 
   return (
     <AppShell
-      title={dragonfly.isDemoMode ? `แดชบอร์ด · ${selectedFarm.name}` : "สวัสดี ชาวสวน"}
+      title={dragonfly.isDemoMode ? selectedFarm.name : "สวัสดี ชาวสวน"}
       subtitle={
         dragonfly.isDemoMode
-          ? `${selectedFarm.location} · ${dragonfly.persona.role} · ${dragonfly.persona.subscription}`
+          ? `แดชบอร์ด · ${selectedFarm.location} · ${dragonfly.persona.role} · ${dragonfly.persona.subscription}`
           : "ศุกร์ที่ 7 สิงหาคม 2569"
       }
     >
       {dragonfly.isDemoMode ? (
-        <Card className="border-primary/25 bg-primary-soft/45 p-4">
-          <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-4" /></span>
-            <div className="min-w-0 flex-1">
-              <label htmlFor="dashboard-farm" className="text-xs font-semibold text-primary">ฟาร์มที่กำลังดู</label>
-              <select
-                id="dashboard-farm"
-                value={selectedFarm.id}
-                onChange={(event) => dragonfly.setActiveDashboardFarm(event.target.value)}
-                className="mt-1.5 block w-full rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary"
-              >
-                {dragonfly.dashboardFarms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name} · {farm.location}</option>)}
-              </select>
+        <Card data-tour="dashboard-farm" className="overflow-hidden p-0">
+          <img
+            src="/images/durian-orchard-dashboard.jpg"
+            alt="สวนทุเรียนที่กำลังดูบนแดชบอร์ด"
+            className="aspect-[16/7] w-full object-cover"
+          />
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-4" /></span>
+              <div className="min-w-0 flex-1">
+                <label htmlFor="dashboard-farm" className="text-xs font-semibold text-primary">ฟาร์มที่กำลังดู</label>
+                <select
+                  id="dashboard-farm"
+                  value={selectedFarm.id}
+                  onChange={(event) => dragonfly.setActiveDashboardFarm(event.target.value)}
+                  className="mt-1.5 block w-full rounded-lg border border-border bg-muted/55 px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                >
+                  {dragonfly.dashboardFarms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name} · {farm.location}</option>)}
+                </select>
+              </div>
             </div>
+            <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex min-w-0 items-center gap-1"><MapPin className="size-3 shrink-0" />{selectedFarm.type} · {selectedFarm.plotCount} แปลง</span>
+              <Badge tone={selectedFarm.status === "Normal" ? "good" : selectedFarm.status === "Blocked" ? "bad" : "warn"}>{selectedFarm.status === "Normal" ? "ปกติ" : selectedFarm.status === "Blocked" ? "ติดขัด" : "ต้องดู"}</Badge>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{selectedFarm.dataLabel}</p>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-            <span className="inline-flex min-w-0 items-center gap-1"><MapPin className="size-3 shrink-0" />{selectedFarm.type} · {selectedFarm.plotCount} แปลง</span>
-            <Badge tone={selectedFarm.status === "Normal" ? "good" : selectedFarm.status === "Blocked" ? "bad" : "warn"}>{selectedFarm.status === "Normal" ? "ปกติ" : selectedFarm.status === "Blocked" ? "ติดขัด" : "ต้องดู"}</Badge>
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{selectedFarm.dataLabel}</p>
         </Card>
       ) : null}
 
@@ -130,8 +137,6 @@ function Dashboard() {
         </Card>
       ) : null}
 
-      <ExperienceProgression persona={dragonfly.persona} onAdvance={dragonfly.setPersona} />
-
       {isCommercial || isExport ? (
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -148,33 +153,32 @@ function Dashboard() {
         </div>
       ) : null}
 
-      <Card className="relative overflow-hidden border-0 bg-primary px-5 py-5 text-primary-foreground shadow-[0_18px_30px_-20px_oklch(0.25_0.08_145_/_0.85)]">
-        <div className="pointer-events-none absolute -right-8 -top-12 size-44 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex items-start justify-between gap-3">
+      <Card data-tour="dashboard-health" className="px-5 py-5">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-primary-foreground/80">สุขภาพสวนโดยรวม</p>
+            <p className="text-sm font-medium text-muted-foreground">สุขภาพสวนโดยรวม</p>
             <div className="mt-1 flex items-end gap-2">
-              <span className="text-4xl font-bold tracking-tight">{farmHealth}</span>
-              <span className="mb-1 text-sm text-primary-foreground/85">/ 100 · ดี</span>
+              <span className="font-display text-4xl font-semibold text-foreground">{farmHealth}</span>
+              <span className="mb-1 text-sm text-muted-foreground">/ 100 · ดี</span>
             </div>
           </div>
-          <BrandMark size="md" className="border border-white/15 bg-white/15 shadow-none" />
+          <BrandMark size="md" className="bg-primary-soft text-primary shadow-none" />
         </div>
-        <div className="relative mt-4 h-2 w-full overflow-hidden rounded-full bg-white/25">
-          <div className="h-full rounded-full bg-white/90" style={{ width: `${farmHealth}%` }} />
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${farmHealth}%` }} />
         </div>
-        <div className="relative mt-5 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl border border-white/10 bg-white/10 py-2.5">
-            <p className="text-lg font-bold">{dragonfly.isDemoMode ? selectedFarm.plotCount : plots.length}</p>
-            <p className="text-[11px] text-primary-foreground/80">แปลง</p>
+        <div className="mt-5 grid grid-cols-3 divide-x divide-border rounded-lg bg-muted/70 py-2 text-center">
+          <div className="py-1">
+            <p className="text-lg font-semibold text-foreground">{dragonfly.isDemoMode ? selectedFarm.plotCount : plots.length}</p>
+            <p className="text-[11px] text-muted-foreground">แปลง</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/10 py-2.5">
-            <p className="text-lg font-bold">{dragonfly.isDemoMode ? selectedFarm.areaRai : area}</p>
-            <p className="text-[11px] text-primary-foreground/80">ไร่</p>
+          <div className="py-1">
+            <p className="text-lg font-semibold text-foreground">{dragonfly.isDemoMode ? selectedFarm.areaRai : area}</p>
+            <p className="text-[11px] text-muted-foreground">ไร่</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/10 py-2.5">
-            <p className="text-lg font-bold">{dragonfly.isDemoMode ? selectedFarm.treeCount : plots.reduce((s, p) => s + p.trees, 0)}</p>
-            <p className="text-[11px] text-primary-foreground/80">ต้น</p>
+          <div className="py-1">
+            <p className="text-lg font-semibold text-foreground">{dragonfly.isDemoMode ? selectedFarm.treeCount : plots.reduce((s, p) => s + p.trees, 0)}</p>
+            <p className="text-[11px] text-muted-foreground">ต้น</p>
           </div>
         </div>
       </Card>
@@ -252,6 +256,8 @@ function Dashboard() {
           </Card>
         </Link>
       </div>
+
+      <ExperienceProgression persona={dragonfly.persona} onAdvance={dragonfly.setPersona} />
 
       <SectionTitle
         action={

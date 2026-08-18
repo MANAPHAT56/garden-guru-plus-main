@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Building2, Eye, LockKeyhole, RotateCcw, ShieldCheck, UserRoundCog, Users } from "lucide-react";
 import { useState } from "react";
 import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
@@ -15,12 +15,18 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const navigate = useNavigate();
   const { mode, isDemoMode, persona, personas, state, resetDemo, setPersona, addOrganizationRole } = useDragonflyData();
   const [requestMessage, setRequestMessage] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>(["ดูงานทีม"]);
   const isAdmin = persona.id === "owner" || persona.id === "commercial" || persona.id === "export";
   const role = getRoleProfile(persona.id);
+  const switchView = (personaId: typeof persona.id) => {
+    if (personaId === persona.id) return;
+    setPersona(personaId);
+    void navigate({ to: personaId === "employee" ? "/my-work" : "/" });
+  };
 
   return (
     <AppShell title="โปรไฟล์และการเข้าถึง" subtitle="บทบาท สิทธิ์ และขอบเขตข้อมูลของบัญชีนี้">
@@ -56,7 +62,7 @@ function SettingsPage() {
         <SectionTitle>สลับมุมมองตัวอย่าง</SectionTitle>
         <Card className="space-y-3 border-primary/30 bg-primary-soft/40">
           <div className="flex gap-2"><Eye className="size-4 shrink-0 text-primary" /><p className="text-xs leading-relaxed text-muted-foreground">ใช้ตรวจ UX และสิทธิ์ของแต่ละบทบาทในข้อมูลตัวอย่างเท่านั้น การกดปุ่มนี้ไม่ใช่การเปลี่ยน Role ของสมาชิกในองค์กรจริง</p></div>
-          <div className="grid grid-cols-2 gap-2">{personas.map((view) => <button key={view.id} type="button" onClick={() => setPersona(view.id)} className={`min-h-14 rounded-lg border px-3 py-2 text-left ${persona.id === view.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}><span className="block text-xs font-semibold">{getRoleProfile(view.id).title}</span><span className="mt-1 block text-[10px] opacity-75">{view.subscription}</span></button>)}</div>
+          <div className="grid grid-cols-2 gap-2">{personas.map((view) => <button key={view.id} type="button" onClick={() => switchView(view.id)} aria-pressed={persona.id === view.id} className={`min-h-14 rounded-lg border px-3 py-2 text-left transition-colors ${persona.id === view.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/45 hover:bg-primary-soft/35"}`}><span className="block text-xs font-semibold">{getRoleProfile(view.id).title}</span><span className="mt-1 block text-[10px] opacity-75">{view.subscription}</span></button>)}</div>
           <p className="text-[11px] text-muted-foreground">มุมมองปัจจุบัน: {role.title} · ข้อมูลจะเปลี่ยนตามตัวอย่างของแต่ละบทบาท</p>
         </Card>
       </> : null}

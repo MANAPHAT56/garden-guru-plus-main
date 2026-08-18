@@ -759,6 +759,7 @@ function PlotsPage() {
       ) : null}
 
       <button
+        data-tour="plots-add-gps"
         onClick={() => {
           setNewPlotSiteId(siteFilter === "ทั้งหมด" ? dragonfly.state.sites[0]?.id ?? "" : siteFilter);
           setIsOpen(true);
