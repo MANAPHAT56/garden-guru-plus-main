@@ -50,12 +50,6 @@ const coreMenu = [
     label: "EasyPlants Academy",
     desc: "Guided learning และ tutorial",
   },
-  {
-    to: "/crop-calendar",
-    icon: CalendarDays,
-    label: "ปฏิทินพืช AI",
-    desc: "Timeline เพาะปลูก → เก็บเกี่ยว",
-  },
   { to: "/recommend", icon: Bot, label: "คำแนะนำ AI", desc: "รดน้ำ ใส่ปุ๋ย ฉีดยา เก็บเกี่ยว" },
   { to: "/weather", icon: CloudSun, label: "สภาพอากาศ", desc: "ฝน ความชื้น ลม UV" },
   { to: "/market", icon: HandCoins, label: "ราคาตลาด", desc: "ราคาผลผลิตล่าสุดวันนี้" },
@@ -72,6 +66,12 @@ const proMenu = [
     icon: Users,
     label: "สมาชิกและทีม",
     desc: "เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่",
+  },
+  {
+    to: "/crop-calendar",
+    icon: CalendarDays,
+    label: "ปฏิทินพืช AI",
+    desc: "Timeline เพาะปลูก → เก็บเกี่ยว",
   },
   { to: "/farm-pro", icon: Factory, label: "งานและทีม", desc: "งาน คนในทีม และแผนผลิตในหน้าเดียว" },
   {

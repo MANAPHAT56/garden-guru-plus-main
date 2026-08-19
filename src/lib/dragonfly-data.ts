@@ -1523,6 +1523,30 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
   const isExport = personaId === "export";
   const scale = isExport ? 2.65 : 1;
   const plots = orchardPlots("D", scale);
+  plots.push(
+    {
+      id: "P01",
+      name: "แปลงผักหลังบ้าน",
+      crop: "ผักสวนครัว",
+      trees: 200,
+      area: 0.5,
+      farmId: "FARM-PERSONAL",
+      gps: "13.75, 100.5",
+      plantedAt: "2026-06-15",
+      status: "Healthy",
+    },
+    {
+      id: "P02",
+      name: "แปลงผลไม้",
+      crop: "กล้วยและมะละกอ",
+      trees: 40,
+      area: 1.5,
+      farmId: "FARM-PERSONAL",
+      gps: "13.76, 100.51",
+      plantedAt: "2025-05-10",
+      status: "Healthy",
+    }
+  );
   const scheduleDate = (offset: number) => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
@@ -1976,6 +2000,34 @@ function buildDemoState(personaId: DemoPersonaId): DemoState {
         team: "ทีมผลไม้ระยอง",
         origin: "team",
         approvalMode: "farm_manager",
+      },
+      {
+        id: "PT-001",
+        title: "รดน้ำแปลงผักสวนครัว",
+        plot: "P01",
+        farmId: "FARM-PERSONAL",
+        type: "Irrigation",
+        status: "Planned",
+        scheduledFor: scheduleDate(0),
+        plannedStart: "17:00",
+        estimatedMinutes: 30,
+        priority: "Normal",
+        origin: "personal",
+        approvalMode: "self",
+      },
+      {
+        id: "PT-002",
+        title: "ใส่ปุ๋ยคอกแปลงผลไม้",
+        plot: "P02",
+        farmId: "FARM-PERSONAL",
+        type: "Fertilizer",
+        status: "Completed",
+        scheduledFor: scheduleDate(-1),
+        plannedStart: "08:00",
+        estimatedMinutes: 45,
+        priority: "Normal",
+        origin: "personal",
+        approvalMode: "self",
       },
     ],
     recommendations: [
