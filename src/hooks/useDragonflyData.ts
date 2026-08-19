@@ -33,6 +33,17 @@ import {
 } from "@/lib/dragonfly-data";
 import type { Plot } from "@/lib/farm-data";
 
+export type WorkspaceContext = "personal" | "organization";
+
+const WORKSPACE_CONTEXT_KEY = "easyplants_workspace_context";
+const WORKSPACE_CONTEXT_EVENT = "easyplants_workspace_context_updated";
+
+function getDefaultWorkspaceContext(personaId: DemoPersonaId): WorkspaceContext {
+  return ["employee", "commercial", "export"].includes(personaId)
+    ? "organization"
+    : "personal";
+}
+
 export function useDragonflyData() {
   // Keep the server and first client render identical; restore local demo changes after hydration.
   const [state, setState] = useState<DemoState>(() => getInitialDemoState());
@@ -46,6 +57,42 @@ export function useDragonflyData() {
   }, []);
 
   const persona = useMemo(() => getCurrentDemoPersona(state), [state]);
+  const [workspaceContext, setWorkspaceContextState] =
+    useState<WorkspaceContext>("organization");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateWorkspaceContext = () => {
+      const saved = window.localStorage.getItem(WORKSPACE_CONTEXT_KEY);
+      setWorkspaceContextState(
+        saved === "personal" || saved === "organization"
+          ? saved
+          : getDefaultWorkspaceContext(getCurrentDemoPersona(getDemoState()).id),
+      );
+    };
+    updateWorkspaceContext();
+    window.addEventListener(WORKSPACE_CONTEXT_EVENT, updateWorkspaceContext);
+    return () => window.removeEventListener(WORKSPACE_CONTEXT_EVENT, updateWorkspaceContext);
+  }, []);
+
+  const setWorkspaceContext = (context: WorkspaceContext) => {
+    setWorkspaceContextState(context);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WORKSPACE_CONTEXT_KEY, context);
+      window.dispatchEvent(new Event(WORKSPACE_CONTEXT_EVENT));
+    }
+  };
+
+  const isOrganizationContext = workspaceContext === "organization";
+  const effectiveRole = isOrganizationContext
+    ? persona.role
+    : persona.id === "beginner"
+      ? "ชาวสวนมือใหม่"
+      : "เจ้าของสวน";
+  const effectiveSubscription = isOrganizationContext ? persona.subscription : "Free";
+  const workspaceLabel = isOrganizationContext
+    ? "องค์กร EasyPlants Produce"
+    : "สวนของฉัน";
   const [activeDashboardFarmId, setActiveDashboardFarmId] = useState("FARM-PRIMARY");
   const dashboardFarms = useMemo(() => getDashboardFarms(state), [state]);
   const activeDashboardFarm =
@@ -70,6 +117,7 @@ export function useDragonflyData() {
   };
 
   const setPersona = (personaId: DemoPersonaId) => {
+    setWorkspaceContext(getDefaultWorkspaceContext(personaId));
     switchDemoPersona(personaId);
     setState(getDemoState());
   };
@@ -233,6 +281,40 @@ export function useDragonflyData() {
           : task,
       ),
     });
+  };
+
+  const assignTask = (
+    taskId: string,
+    assignment: Pick<SmartTask, "team" | "assignedWorkerId" | "approvalMode">,
+  ) => {
+    const task = state.tasks.find((item) => item.id === taskId);
+    if (!task) return { ok: false as const, reason: "ไม่พบงานที่ต้องการมอบหมาย" };
+    if (!assignment.team) return { ok: false as const, reason: "เลือกทีมรับผิดชอบก่อน" };
+    if (
+      assignment.assignedWorkerId &&
+      !state.workers.some(
+        (worker) =>
+          worker.id === assignment.assignedWorkerId && worker.crew === assignment.team,
+      )
+    ) {
+      return { ok: false as const, reason: "พนักงานไม่ได้อยู่ในทีมที่เลือก" };
+    }
+    persist({
+      ...state,
+      tasks: state.tasks.map((item) =>
+        item.id === taskId
+          ? {
+              ...item,
+              origin: "team",
+              team: assignment.team,
+              assignedWorkerId: assignment.assignedWorkerId || undefined,
+              approvalMode: assignment.approvalMode ?? "team_lead",
+              status: "Assigned",
+            }
+          : item,
+      ),
+    });
+    return { ok: true as const };
   };
 
   const recordWeeklyInspection = (
@@ -626,6 +708,12 @@ export function useDragonflyData() {
     isDemoMode,
     personas: demoPersonas,
     persona,
+    workspaceContext,
+    setWorkspaceContext,
+    isOrganizationContext,
+    effectiveRole,
+    effectiveSubscription,
+    workspaceLabel,
     state,
     dashboardFarms,
     activeDashboardFarm,
@@ -636,6 +724,7 @@ export function useDragonflyData() {
     addTask,
     updateTaskStatus,
     startTeamTask,
+    assignTask,
     recordWeeklyInspection,
     updateWorkOrderStatus,
     updateDevice,

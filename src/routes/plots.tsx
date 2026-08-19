@@ -440,6 +440,14 @@ function SatelliteMapDrawer({ points, setPoints, centerPoint }: SatelliteMapDraw
 function PlotsPage() {
   const { plots, addPlot, isLoaded } = usePlots();
   const dragonfly = useDragonflyData();
+  const isOrganizationEmployee = dragonfly.workspaceContext === "organization" && dragonfly.persona.id === "employee";
+  const employeeWorker = dragonfly.state.workers.find((worker) => worker.id === "W-004") ?? dragonfly.state.workers[0];
+  const employeePlotIds = useMemo(() => new Set([
+    ...(employeeWorker?.plot ? [employeeWorker.plot] : []),
+    ...dragonfly.state.tasks
+      .filter((task) => task.assignedWorkerId === employeeWorker?.id || (!task.assignedWorkerId && task.team === employeeWorker?.crew))
+      .map((task) => task.plot),
+  ]), [dragonfly.state.tasks, employeeWorker?.crew, employeeWorker?.id, employeeWorker?.plot]);
   const [recentPlotName, setRecentPlotName] = useState<string | null>(null);
   const [openDetail, setOpenDetail] = useState<string | null>(null);
   const [cropFilter, setCropFilter] = useState("ทั้งหมด");
@@ -481,11 +489,18 @@ function PlotsPage() {
   const [treeCount, setTreeCount] = useState("100");
 
   const selectedSite = dragonfly.state.sites.find((site) => site.id === siteFilter);
-  const farmSites = useMemo(() => dragonfly.state.sites.filter((site) => (site.farmId ?? "FARM-PRIMARY") === farmFilter), [dragonfly.state.sites, farmFilter]);
+  const farmSites = useMemo(() => dragonfly.state.sites.filter((site) =>
+    (site.farmId ?? "FARM-PRIMARY") === farmFilter &&
+    (!isOrganizationEmployee || plots.some((plot) => employeePlotIds.has(plot.id) && (plot.siteId === site.id || site.plotPrefixes.some((prefix) => plot.id.startsWith(prefix)))))
+  ), [dragonfly.state.sites, employeePlotIds, farmFilter, isOrganizationEmployee, plots]);
   const farmPlots = useMemo(
-    () => plots.filter((plot) => (plot.farmId ?? "FARM-PRIMARY") === farmFilter),
-    [plots, farmFilter]
+    () => plots.filter((plot) => (plot.farmId ?? "FARM-PRIMARY") === farmFilter && (!isOrganizationEmployee || employeePlotIds.has(plot.id))),
+    [plots, employeePlotIds, farmFilter, isOrganizationEmployee]
   );
+  const visibleFarms = useMemo(() => isOrganizationEmployee
+    ? dragonfly.dashboardFarms.filter((farm) => plots.some((plot) => employeePlotIds.has(plot.id) && (plot.farmId ?? "FARM-PRIMARY") === farm.id))
+    : dragonfly.dashboardFarms,
+  [dragonfly.dashboardFarms, employeePlotIds, isOrganizationEmployee, plots]);
   const plotsInScope = useMemo(
     () => siteFilter === "ทั้งหมด"
       ? farmPlots
@@ -719,10 +734,10 @@ function PlotsPage() {
 
   return (
     <AppShell
-      title="จัดการแปลง"
+      title={isOrganizationEmployee ? "แปลงที่ฉันรับผิดชอบ" : "จัดการแปลง"}
       subtitle={
         isLoaded
-          ? `${dragonfly.dashboardFarms.find((farm) => farm.id === farmFilter)?.name ?? "ฟาร์ม"} · ${filteredPlots.length} แปลงที่แสดง · ${filteredPlots
+          ? `${dragonfly.workspaceLabel} · ${visibleFarms.find((farm) => farm.id === farmFilter)?.name ?? "ฟาร์ม"} · ${filteredPlots.length} แปลงที่แสดง · ${filteredPlots
               .reduce((s, p) => s + p.area, 0)
               .toFixed(1)} ไร่`
           : "กำลังโหลดข้อมูล..."
@@ -758,7 +773,7 @@ function PlotsPage() {
         </Card>
       ) : null}
 
-      <button
+      {isOrganizationEmployee ? <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">สิทธิ์พนักงานในองค์กร</p><p className="mt-1 text-xs text-muted-foreground">ดูสุขภาพ ประวัติ และงานของแปลงที่ได้รับมอบหมายได้ แต่เพิ่ม ลบ หรือเปลี่ยนโครงสร้างแปลงไม่ได้</p></Card> : <button
         data-tour="plots-add-gps"
         onClick={() => {
           setNewPlotSiteId(siteFilter === "ทั้งหมด" ? dragonfly.state.sites[0]?.id ?? "" : siteFilter);
@@ -767,13 +782,13 @@ function PlotsPage() {
         className="bg-primary flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)] transition-transform active:scale-[0.98] hover:opacity-95"
       >
         <Plus className="size-4" /> เพิ่มแปลงจากตำแหน่ง GPS
-      </button>
+      </button>}
 
       <Card className="space-y-3">
         <label className="block text-xs font-medium text-muted-foreground">
           ฟาร์ม
           <select value={farmFilter} onChange={(event) => { setFarmFilter(event.target.value); setSiteFilter("ทั้งหมด"); setCropFilter("ทั้งหมด"); }} className="mt-1.5 block w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary">
-            {dragonfly.dashboardFarms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name} · {farm.location}</option>)}
+            {visibleFarms.map((farm) => <option key={farm.id} value={farm.id}>{farm.name} · {farm.location}</option>)}
           </select>
         </label>
         <label className="block text-xs font-medium text-muted-foreground">

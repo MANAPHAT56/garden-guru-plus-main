@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, ClipboardCheck, Home, LayoutGrid, Leaf, MessageCircle, ScanLine } from "lucide-react";
+import { Bell, Home, LayoutGrid, Leaf, MessageCircle, ScanLine } from "lucide-react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { DemoModeControls } from "@/components/DemoModeControls";
 import { GuidedTutorial } from "@/components/GuidedTutorial";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useDragonflyData } from "@/hooks/useDragonflyData";
+import { WorkspaceContextSwitcher } from "@/components/WorkspaceContextSwitcher";
 
 const navItems = [
   { to: "/", label: "หน้าหลัก", icon: Home, exact: true },
@@ -24,14 +24,11 @@ export function AppShell({
   subtitle?: string;
   children: ReactNode;
 }) {
-  const { persona } = useDragonflyData();
-  const visibleNavItems = persona.id === "employee"
-    ? [navItems[0], { to: "/my-work", label: "งานของฉัน", icon: ClipboardCheck, exact: false }, navItems[2], navItems[3], navItems[4]]
-    : navItems;
   return (
     <div className="min-h-screen bg-background">
       <div className="app-frame mx-auto flex min-h-screen w-full max-w-md flex-col bg-background md:max-w-6xl">
         <DemoModeControls />
+        <WorkspaceContextSwitcher />
         <header className="sticky top-0 z-20 border-b border-border/60 bg-card/88 px-5 pt-[max(1.1rem,env(safe-area-inset-top))] pb-3.5 text-foreground backdrop-blur-2xl">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -66,7 +63,7 @@ export function AppShell({
 
         <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md border-t border-border/70 bg-card/92 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl md:max-w-6xl">
           <ul className="flex items-stretch justify-between gap-1 p-1.5">
-            {visibleNavItems.map((item) => (
+            {navItems.map((item) => (
               <li key={item.to} className="min-w-0 flex-1">
                 <Link
                   to={item.to}

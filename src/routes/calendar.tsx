@@ -90,6 +90,11 @@ function CalendarPage() {
   const [smartTaskWorkerId, setSmartTaskWorkerId] = useState("");
   const [smartTaskApprovalMode, setSmartTaskApprovalMode] = useState<"team_lead" | "farm_manager" | "qa">("team_lead");
   const [smartTaskDate, setSmartTaskDate] = useState(getLocalDateKey());
+  const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
+  const [assignmentMode, setAssignmentMode] = useState<"crew" | "person">("crew");
+  const [assignmentTeam, setAssignmentTeam] = useState("");
+  const [assignmentWorkerId, setAssignmentWorkerId] = useState("");
+  const [assignmentApprovalMode, setAssignmentApprovalMode] = useState<"team_lead" | "farm_manager" | "qa">("team_lead");
 
   // form state
   const [newTitle, setNewTitle] = useState("");
@@ -158,7 +163,7 @@ function CalendarPage() {
       if (status === "Completed") return "good";
       if (status === "Delayed" || status === "Skipped" || status === "Cancelled") return "bad";
       if (status === "In Progress") return "info";
-      if (status === "Assigned") return "warn";
+      if (status === "Assigned" || status === "Unassigned") return "warn";
       return "muted";
     };
 
@@ -177,6 +182,8 @@ function CalendarPage() {
       return matchesFarm && matchesSite;
     });
     const scopedPlotIds = new Set(scopedTaskPlots.map((plot) => plot.id));
+    const organizationEmployee = dragonfly.workspaceContext === "organization" && dragonfly.persona.id === "employee";
+    const employeeWorker = dragonfly.state.workers.find((worker) => worker.id === "W-004") ?? dragonfly.state.workers[0];
     const tasksInScope = dragonfly.state.tasks.filter((task) => {
       const plot = dragonfly.state.plots.find((item) => item.id === task.plot || item.name === task.plot);
       const taskFarmId = task.farmId ?? plot?.farmId ?? "FARM-PRIMARY";
@@ -184,13 +191,17 @@ function CalendarPage() {
       const matchesFarm = taskFarmId === demoFarmFilter;
       const matchesSite = demoSiteFilter === "ทั้งหมด" || taskSiteId === demoSiteFilter;
       const matchesKnownPlot = scopedPlotIds.size === 0 || scopedPlotIds.has(task.plot) || scopedTaskPlots.some((item) => item.name === task.plot);
-      return matchesFarm && matchesSite && matchesKnownPlot;
+      const isTeamTask = task.origin === "team" || Boolean(task.team);
+      const matchesWorkspace = dragonfly.workspaceContext === "personal" ? !isTeamTask : isTeamTask || task.origin === "system";
+      const matchesEmployee = !organizationEmployee || task.assignedWorkerId === employeeWorker?.id || (!task.assignedWorkerId && task.team === employeeWorker?.crew);
+      return matchesFarm && matchesSite && matchesKnownPlot && matchesWorkspace && matchesEmployee;
     });
     const demoPlotOptions = ["ทั้งหมด", ...Array.from(new Set(tasksInScope.map((task) => task.plot))).map((plotId) => {
       const plot = dragonfly.state.plots.find((item) => item.id === plotId || item.name === plotId);
       return { value: plotId, label: plot ? `${plotId} · ${plot.name} · ${plot.crop}` : plotId };
     })];
-    const demoStatusOptions = ["ทั้งหมด", ...Array.from(new Set(tasksInScope.map((task) => task.status)))];
+    const getEffectiveTaskStatus = (task: typeof tasksInScope[number]) => task.status === "Planned" ? (task.team || task.assignedWorkerId ? "Assigned" : "Unassigned") : task.status;
+    const demoStatusOptions = ["ทั้งหมด", ...Array.from(new Set(tasksInScope.map(getEffectiveTaskStatus)))];
     const demoTypeOptions = ["ทั้งหมด", ...Array.from(new Set(tasksInScope.map((task) => task.type)))];
     const summarySmartTasks = tasksInScope.filter((task) =>
       (demoPlotFilter === "ทั้งหมด" || task.plot === demoPlotFilter) &&
@@ -198,14 +209,14 @@ function CalendarPage() {
       (demoOriginFilter === "ทั้งหมด" || (demoOriginFilter === "team" ? task.origin === "team" || Boolean(task.team) : task.origin !== "team" && !task.team)) &&
       isTaskInPeriod(task.scheduledFor, demoTimeFilter, demoCustomRange)
     );
-    const filteredSmartTasks = summarySmartTasks.filter((task) => demoStatusFilter === "ทั้งหมด" || task.status === demoStatusFilter);
-    const canCreatePersonalTask = dragonfly.persona.id !== "employee";
-    const canCreateTeamTask = dragonfly.persona.subscription === "Farm Pro";
+    const filteredSmartTasks = summarySmartTasks.filter((task) => demoStatusFilter === "ทั้งหมด" || getEffectiveTaskStatus(task) === demoStatusFilter);
+    const canCreatePersonalTask = dragonfly.workspaceContext === "personal";
+    const canCreateTeamTask = dragonfly.workspaceContext === "organization" && dragonfly.effectiveSubscription === "Farm Pro" && !organizationEmployee;
     const crewOptions = Array.from(new Set(dragonfly.state.workers.map((worker) => worker.crew))).map((crew) => ({ value: crew, label: crew }));
     const originLabel = (task: typeof filteredSmartTasks[number]) => task.origin === "team" || task.team ? "งานทีม" : task.origin === "system" ? "งานจากระบบ" : "งานส่วนตัว";
 
     return (
-      <AppShell title="ตารางงานสวน" subtitle="ติดตามงานตามแปลง ประเภท และสถานะ">
+      <AppShell title="ตารางงานสวน" subtitle={`${dragonfly.workspaceLabel} · ${dragonfly.effectiveRole} · ติดตามงานตามแปลง ประเภท และสถานะ`}>
         <Card className="border-primary/30 bg-primary-soft/50">
           <p className="text-sm font-semibold text-primary">สถานะงาน</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -218,9 +229,9 @@ function CalendarPage() {
           <SearchableSelect label="โซน" options={demoSiteOptions} value={demoSiteFilter} onChange={(value) => { setDemoSiteFilter(value); setDemoPlotFilter("ทั้งหมด"); }} allLabel="ทุกโซนในฟาร์ม" searchPlaceholder="ค้นหารหัสหรือชื่อโซน" />
           <TimeRangeFilter value={demoTimeFilter} onChange={setDemoTimeFilter} options={[{ value: "today", label: "วันนี้" }, { value: "7d", label: "7 วัน" }, { value: "30d", label: "30 วัน" }, { value: "all", label: "ทั้งหมด" }]} dateRange={demoCustomRange} onDateRangeChange={setDemoCustomRange} />
           <SearchableSelect label="แปลง" options={demoPlotOptions} value={demoPlotFilter} onChange={setDemoPlotFilter} allLabel="ทุกแปลง" searchPlaceholder="ค้นหารหัส ชื่อแปลง หรือพืช" />
-          <DropdownFilter label="สถานะ" values={demoStatusOptions} value={demoStatusFilter} onChange={setDemoStatusFilter} allLabel="ทุกสถานะ" />
+          <DropdownFilter label="สถานะ" values={demoStatusOptions} value={demoStatusFilter} onChange={setDemoStatusFilter} allLabel="ทุกสถานะ" getLabel={getCalendarStatusLabel} />
           <DropdownFilter label="ประเภทงาน" values={demoTypeOptions} value={demoTypeFilter} onChange={setDemoTypeFilter} allLabel="ทุกประเภทงาน" />
-          <DropdownFilter label="มุมมองงาน" values={["ส่วนตัว", "ทีม"]} value={demoOriginFilter === "ทั้งหมด" ? "ทั้งหมด" : demoOriginFilter === "team" ? "ทีม" : "ส่วนตัว"} onChange={(value) => setDemoOriginFilter(value === "ทีม" ? "team" : value === "ส่วนตัว" ? "personal" : "ทั้งหมด")} allLabel="ทุกงาน" />
+          <DropdownFilter label="ประเภทเจ้าของงาน" values={dragonfly.workspaceContext === "personal" ? ["ส่วนตัว"] : ["ทีม"]} value={dragonfly.workspaceContext === "personal" ? "ส่วนตัว" : "ทีม"} onChange={() => setDemoOriginFilter(dragonfly.workspaceContext === "personal" ? "personal" : "team")} allLabel="ทุกงาน" />
           <p className="text-xs text-muted-foreground">กำลังแสดง {filteredSmartTasks.length} จาก {tasksInScope.length} งานในฟาร์ม/โซนที่เลือก</p>
         </Card>
 
@@ -244,12 +255,21 @@ function CalendarPage() {
             <p className="text-[11px] text-muted-foreground">{smartTaskAssigneeMode === "crew" ? "สมาชิกทุกคนในทีมจะเห็นงานนี้ใน “งานของฉัน” จนกว่าจะมีคนรับงาน" : "เฉพาะพนักงานที่เลือกจะเห็นงานนี้ใน “งานของฉัน”"}</p>
             <label className="block text-xs font-semibold text-muted-foreground">ผู้มีสิทธิ์ตรวจรับ<select value={smartTaskApprovalMode} onChange={(event) => setSmartTaskApprovalMode(event.target.value as typeof smartTaskApprovalMode)} className="mt-1.5 block w-full rounded-lg border border-border bg-card px-3 py-2.5 text-xs text-foreground"><option value="team_lead">หัวหน้าทีม · ผู้จัดการอนุมัติสำรอง</option><option value="farm_manager">ผู้จัดการฟาร์มเท่านั้น</option><option value="qa">เจ้าหน้าที่ QA</option></select></label>
           </> : null}
-          <button onClick={() => { const plot = scopedTaskPlots.find((item) => item.id === smartTaskPlot); const worker = dragonfly.state.workers.find((item) => item.id === smartTaskWorkerId); const assignedTeam = smartTaskOrigin === "team" ? (smartTaskAssigneeMode === "crew" ? smartTaskTeam : worker?.crew ?? smartTaskTeam) : undefined; if (!smartTaskTitle.trim() || !plot) { toast.error("กรอกชื่องานและเลือกแปลงก่อน"); return; } if (smartTaskOrigin === "team" && !assignedTeam) { toast.error("เลือกทีมหรือพนักงานที่รับผิดชอบก่อน"); return; } dragonfly.addTask({ title: smartTaskTitle.trim(), plot: plot.id, farmId: plot.farmId ?? demoFarmFilter, siteId: plot.siteId, type: smartTaskType, priority: "Normal", approvalMode: smartTaskOrigin === "personal" ? "self" : smartTaskApprovalMode, origin: smartTaskOrigin, team: assignedTeam, assignedWorkerId: smartTaskOrigin === "team" && smartTaskAssigneeMode === "person" ? smartTaskWorkerId || undefined : undefined, createdBy: dragonfly.persona.role, ownerPersonaId: smartTaskOrigin === "personal" ? dragonfly.persona.id : undefined, status: smartTaskOrigin === "team" ? "Assigned" : "Planned", scheduledFor: smartTaskDate }); setSmartTaskTitle(""); setSmartTaskApprovalMode("team_lead"); setShowSmartTaskForm(false); toast.success(smartTaskOrigin === "team" ? `มอบหมายงานให้${smartTaskAssigneeMode === "crew" ? `ทีม ${assignedTeam}` : worker?.name ?? "พนักงาน"}แล้ว` : "สร้างงานส่วนตัวแล้ว"); }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">สร้าง Task</button>
+          <button onClick={() => { const plot = scopedTaskPlots.find((item) => item.id === smartTaskPlot); const worker = dragonfly.state.workers.find((item) => item.id === smartTaskWorkerId); const assignedTeam = smartTaskOrigin === "team" ? (smartTaskAssigneeMode === "crew" ? smartTaskTeam : worker?.crew ?? smartTaskTeam) : undefined; if (!smartTaskTitle.trim() || !plot) { toast.error("กรอกชื่องานและเลือกแปลงก่อน"); return; } if (smartTaskOrigin === "team" && !assignedTeam) { toast.error("เลือกทีมหรือพนักงานที่รับผิดชอบก่อน"); return; } dragonfly.addTask({ title: smartTaskTitle.trim(), plot: plot.id, farmId: plot.farmId ?? demoFarmFilter, siteId: plot.siteId, type: smartTaskType, priority: "Normal", approvalMode: smartTaskOrigin === "personal" ? "self" : smartTaskApprovalMode, origin: smartTaskOrigin, team: assignedTeam, assignedWorkerId: smartTaskOrigin === "team" && smartTaskAssigneeMode === "person" ? smartTaskWorkerId || undefined : undefined, createdBy: dragonfly.effectiveRole, ownerPersonaId: smartTaskOrigin === "personal" ? dragonfly.persona.id : undefined, status: smartTaskOrigin === "team" ? "Assigned" : "Planned", scheduledFor: smartTaskDate }); setSmartTaskTitle(""); setSmartTaskApprovalMode("team_lead"); setShowSmartTaskForm(false); toast.success(smartTaskOrigin === "team" ? `มอบหมายงานให้${smartTaskAssigneeMode === "crew" ? `ทีม ${assignedTeam}` : worker?.name ?? "พนักงาน"}แล้ว` : "สร้างงานส่วนตัวแล้ว"); }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">สร้าง Task</button>
         </Card> : null}
 
         <SectionTitle>งานตามตัวกรอง</SectionTitle>
         <div className="space-y-3">
-          {filteredSmartTasks.map((task) => (
+          {filteredSmartTasks.map((task) => {
+            const taskPlot = dragonfly.state.plots.find((plot) => plot.id === task.plot || plot.name === task.plot);
+            const taskFarmId = task.farmId ?? taskPlot?.farmId ?? "FARM-PRIMARY";
+            const assignableWorkers = dragonfly.state.workers.filter((worker) => !worker.farmId || worker.farmId === taskFarmId);
+            const assignmentCrewOptions = Array.from(new Set(assignableWorkers.map((worker) => worker.crew))).map((crew) => ({ value: crew, label: crew }));
+            const crewKeyword = task.type === "Irrigation" ? "irrigation" : task.type === "Harvest" ? "harvest" : task.type === "Inspection" ? "protection" : "general";
+            const suggestedAssignmentTeam = assignableWorkers.find((worker) => worker.plot === task.plot)?.crew ?? assignmentCrewOptions.find((crew) => crew.value.toLocaleLowerCase().includes(crewKeyword))?.value ?? assignmentCrewOptions[0]?.value ?? "";
+            const effectiveStatus = getEffectiveTaskStatus(task);
+            const isUnassigned = effectiveStatus === "Unassigned";
+            return (
             <Card key={task.id}>
               <div className="flex items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-lg">
@@ -263,19 +283,40 @@ function CalendarPage() {
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {task.plannedStart ? `${task.plannedStart} น.` : "ไม่ระบุเวลา"}
                         {task.estimatedMinutes ? ` · ${task.estimatedMinutes} นาที` : ""}
-                        {task.assignedWorkerId ? ` · ${dragonfly.state.workers.find((worker) => worker.id === task.assignedWorkerId)?.name ?? task.assignedWorkerId}` : " · รอมอบหมายผู้ปฏิบัติงาน"}
+                        {task.assignedWorkerId ? ` · ผู้รับผิดชอบ ${dragonfly.state.workers.find((worker) => worker.id === task.assignedWorkerId)?.name ?? task.assignedWorkerId}` : task.team ? ` · มอบหมายทั้งทีม ${task.team}` : " · ยังไม่มอบหมาย"}
                         {task.priority ? ` · ความสำคัญ ${task.priority === "Urgent" ? "เร่งด่วน" : task.priority === "High" ? "สูง" : task.priority === "Low" ? "ต่ำ" : "ปกติ"}` : ""}
                       </p>
                       {task.origin === "team" || task.team ? <p className="mt-1 text-[11px] text-muted-foreground">ผู้ตรวจรับ: {getTaskReviewerLabel(task)}</p> : null}
                     </div>
-                    <Badge tone={statusTone(task.status)}>{task.status}</Badge>
+                    <Badge tone={statusTone(effectiveStatus)}>{getCalendarStatusLabel(effectiveStatus)}</Badge>
                   </div>
                   {task.reason ? (
                     <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       สาเหตุ: {task.reason}
                     </p>
                   ) : null}
-                  {dragonfly.persona.id !== "employee" ? <><div className="mt-3 grid grid-cols-3 gap-2">
+                  {!organizationEmployee && isUnassigned ? <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssigningTaskId(task.id);
+                        setAssignmentMode("crew");
+                        setAssignmentTeam(suggestedAssignmentTeam);
+                        setAssignmentWorkerId("");
+                        setAssignmentApprovalMode(task.type === "Harvest" ? "qa" : "team_lead");
+                      }}
+                      className="mt-3 w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground"
+                    >
+                      มอบหมายงาน
+                    </button>
+                    {assigningTaskId === task.id ? <div className="mt-3 space-y-3 rounded-lg border border-primary/25 bg-primary-soft/35 p-3">
+                      <div><p className="text-xs font-semibold text-primary">เลือกผู้รับผิดชอบ</p><p className="mt-1 text-[11px] text-muted-foreground">งานยังไม่เข้าหน้างานของพนักงานจนกว่าจะยืนยันการมอบหมาย</p></div>
+                      <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => { setAssignmentMode("crew"); setAssignmentWorkerId(""); }} className={`rounded-lg border py-2 text-xs font-semibold ${assignmentMode === "crew" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>มอบหมายทั้งทีม</button><button type="button" onClick={() => setAssignmentMode("person")} className={`rounded-lg border py-2 text-xs font-semibold ${assignmentMode === "person" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>มอบหมายรายบุคคล</button></div>
+                      {assignmentMode === "crew" ? <SearchableSelect label="ทีมรับผิดชอบ" options={assignmentCrewOptions} value={assignmentTeam} onChange={setAssignmentTeam} searchPlaceholder="ค้นหาชื่อทีม" /> : <SearchableSelect label="พนักงานรับผิดชอบ" options={assignableWorkers.filter((worker) => !["On Leave", "Unavailable"].includes(worker.status)).map((worker) => ({ value: worker.id, label: `${worker.name} · ${worker.crew}` }))} value={assignmentWorkerId} onChange={(value) => { setAssignmentWorkerId(value); setAssignmentTeam(assignableWorkers.find((worker) => worker.id === value)?.crew ?? ""); }} searchPlaceholder="ค้นหาชื่อพนักงานหรือทีม" />}
+                      <label className="block text-xs font-semibold text-muted-foreground">ผู้มีสิทธิ์ตรวจรับ<select value={assignmentApprovalMode} onChange={(event) => setAssignmentApprovalMode(event.target.value as typeof assignmentApprovalMode)} className="mt-1.5 block min-h-11 w-full rounded-lg border border-border bg-card px-3 text-xs text-foreground"><option value="team_lead">หัวหน้าทีม · ผู้จัดการอนุมัติสำรอง</option><option value="farm_manager">ผู้จัดการฟาร์มเท่านั้น</option><option value="qa">เจ้าหน้าที่ QA</option></select></label>
+                      <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setAssigningTaskId(null)} className="rounded-lg border border-border py-2 text-xs font-semibold">ยกเลิก</button><button type="button" onClick={() => { const worker = assignableWorkers.find((item) => item.id === assignmentWorkerId); const team = assignmentMode === "person" ? worker?.crew ?? assignmentTeam : assignmentTeam; if (!team || (assignmentMode === "person" && !worker)) { toast.error(assignmentMode === "person" ? "เลือกพนักงานก่อนมอบหมาย" : "เลือกทีมก่อนมอบหมาย"); return; } const result = dragonfly.assignTask(task.id, { team, assignedWorkerId: assignmentMode === "person" ? worker?.id : undefined, approvalMode: assignmentApprovalMode }); if (!result.ok) { toast.error(result.reason); return; } setAssigningTaskId(null); toast.success(assignmentMode === "person" ? `มอบหมายให้ ${worker?.name} แล้ว` : `มอบหมายให้ทีม ${team} แล้ว`); }} className="rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground">ยืนยันมอบหมาย</button></div>
+                    </div> : null}
+                  </> : !organizationEmployee && !["Completed", "Cancelled", "Skipped"].includes(task.status) ? <><div className="mt-3 grid grid-cols-3 gap-2">
                     <button
                       onClick={() => dragonfly.updateTaskStatus(task.id, "In Progress")}
                       className="rounded-xl border border-border py-2 text-xs font-semibold"
@@ -307,21 +348,22 @@ function CalendarPage() {
                   >
                     ข้ามงานพร้อมเหตุผล
                   </button>
-                  </> : <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">พนักงานอัปเดตได้เฉพาะงานที่มอบหมายผ่านหน้า “งานของฉัน”</p>}
+                  </> : organizationEmployee ? <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">ในบริบทองค์กร พนักงานอัปเดตได้เฉพาะงานที่มอบหมายผ่านหน้า “งานของฉัน”</p> : null}
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         {filteredSmartTasks.length === 0 ? <Card className="py-8 text-center text-sm text-muted-foreground">ไม่มีงานที่ตรงกับตัวกรองนี้</Card> : null}
 
         <SectionTitle>สรุปสถานะตามตัวกรอง</SectionTitle>
         <Card className="grid grid-cols-3 gap-2 text-center">
-          {["Planned", "In Progress", "Supervisor Review", "Completed", "Delayed", "Skipped", "Assigned"].map((status) => (
+          {["Unassigned", "Assigned", "In Progress", "Supervisor Review", "Completed", "Delayed", "Skipped"].map((status) => (
             <div key={status} className="rounded-xl bg-muted/60 p-2">
               <p className="text-sm font-bold">
-                {summarySmartTasks.filter((task) => task.status === status).length}
+                {summarySmartTasks.filter((task) => getEffectiveTaskStatus(task) === status).length}
               </p>
               <p className="text-[10px] text-muted-foreground">{getCalendarStatusLabel(status)}</p>
             </div>
@@ -531,8 +573,8 @@ function CalendarPage() {
   );
 }
 
-function DropdownFilter({ label, values, value, onChange, allLabel }: { label: string; values: string[]; value: string; onChange: (value: string) => void; allLabel: string }) {
-  return <label className="block text-xs font-medium text-muted-foreground">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 block min-h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none focus:border-primary">{values.map((item) => <option key={item} value={item}>{item === "ทั้งหมด" ? allLabel : item}</option>)}</select></label>;
+function DropdownFilter({ label, values, value, onChange, allLabel, getLabel }: { label: string; values: string[]; value: string; onChange: (value: string) => void; allLabel: string; getLabel?: (value: string) => string }) {
+  return <label className="block text-xs font-medium text-muted-foreground">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 block min-h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none focus:border-primary">{values.map((item) => <option key={item} value={item}>{item === "ทั้งหมด" ? allLabel : getLabel?.(item) ?? item}</option>)}</select></label>;
 }
 
 function formatTaskDate(date: string) {
@@ -544,5 +586,5 @@ function getDemoSiteLabel(siteId: string) {
 }
 
 function getCalendarStatusLabel(status: string) {
-  return ({ Planned: "วางแผนแล้ว", Assigned: "มอบหมายแล้ว", "In Progress": "กำลังทำ", "Supervisor Review": "รอตรวจรับ", Completed: "เสร็จแล้ว", Delayed: "ล่าช้า", Skipped: "ข้ามงาน" } as Record<string, string>)[status] ?? status;
+  return ({ Unassigned: "ยังไม่มอบหมาย", Planned: "วางแผนแล้ว", Assigned: "มอบหมายแล้ว", "In Progress": "กำลังทำ", "Supervisor Review": "รอตรวจรับ", Completed: "เสร็จแล้ว", Delayed: "ล่าช้า", Skipped: "ข้ามงาน", Cancelled: "ยกเลิก" } as Record<string, string>)[status] ?? status;
 }

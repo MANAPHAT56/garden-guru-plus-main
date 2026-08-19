@@ -324,6 +324,15 @@ export const marketPrices = [
   { id: "m5", product: "มังคุด", name: "ตลาดกลางจันทบุรี", unit: "บาท/กก.", price: 72, change: -2.8, market: "ตลาดกลางจันทบุรี", province: "จันทบุรี", updated: "วันนี้ 06:50" },
   { id: "m6", product: "มังคุด", name: "ตลาดไท", unit: "บาท/กก.", price: 78, change: 1.1, market: "ตลาดไท", province: "ปทุมธานี", updated: "วันนี้ 07:10" },
   { id: "m7", product: "ลำไยอีดอ", name: "ตลาดกลางลำพูน", unit: "บาท/กก.", price: 38, change: 3.1, market: "ตลาดกลางลำพูน", province: "ลำพูน", updated: "วันนี้ 08:00" },
+  { id: "m8", product: "ลำไยอีดอ", name: "ตลาดเมืองใหม่", unit: "บาท/กก.", price: 37, change: 2.1, market: "ตลาดเมืองใหม่", province: "เชียงใหม่", updated: "วันนี้ 07:20" },
+  { id: "m9", product: "ทุเรียนชะนี", name: "ตลาดกลางจันทบุรี", unit: "บาท/กก.", price: 112, change: 1.4, market: "ตลาดกลางจันทบุรี", province: "จันทบุรี", updated: "วันนี้ 07:30" },
+  { id: "m10", product: "ทุเรียนชะนี", name: "ตลาดกลางระยอง", unit: "บาท/กก.", price: 108, change: -0.9, market: "ตลาดกลางระยอง", province: "ระยอง", updated: "วันนี้ 07:00" },
+  { id: "m11", product: "ทุเรียนก้านยาว", name: "ตลาดไท", unit: "บาท/กก.", price: 185, change: 4.3, market: "ตลาดไท", province: "ปทุมธานี", updated: "วันนี้ 07:30" },
+  { id: "m12", product: "ทุเรียนก้านยาว", name: "ตลาดกลางจันทบุรี", unit: "บาท/กก.", price: 178, change: 2.8, market: "ตลาดกลางจันทบุรี", province: "จันทบุรี", updated: "วันนี้ 07:30" },
+  { id: "m13", product: "เงาะโรงเรียน", name: "ตลาดกลางระยอง", unit: "บาท/กก.", price: 31, change: -1.2, market: "ตลาดกลางระยอง", province: "ระยอง", updated: "วันนี้ 06:55" },
+  { id: "m14", product: "เงาะโรงเรียน", name: "ตลาดกลางตราด", unit: "บาท/กก.", price: 33, change: 1.1, market: "ตลาดกลางตราด", province: "ตราด", updated: "วันนี้ 07:05" },
+  { id: "m15", product: "มังคุด", name: "ตลาดกลางตราด", unit: "บาท/กก.", price: 75, change: 2.4, market: "ตลาดกลางตราด", province: "ตราด", updated: "วันนี้ 07:05" },
+  { id: "m16", product: "ทุเรียนหมอนทอง", name: "ตลาดกลางระยอง", unit: "บาท/กก.", price: 146, change: 2.7, market: "ตลาดกลางระยอง", province: "ระยอง", updated: "วันนี้ 07:00" },
 ];
 
 export const priceTrend = [

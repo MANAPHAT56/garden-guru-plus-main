@@ -44,10 +44,12 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const dragonfly = useDragonflyData();
   const { plots } = usePlots();
-  const isBeginner = dragonfly.persona.profile.knowledgeLevel === "Beginner";
-  const isOwner = dragonfly.persona.id === "owner";
-  const isCommercial = dragonfly.persona.profile.operationScale === "Commercial Farm";
-  const isExport = dragonfly.persona.profile.operationScale === "Enterprise / Export";
+  const isPersonalWorkspace = dragonfly.workspaceContext === "personal";
+  const isOrganizationEmployee = !isPersonalWorkspace && dragonfly.persona.id === "employee";
+  const isBeginner = isPersonalWorkspace && dragonfly.persona.profile.knowledgeLevel === "Beginner";
+  const isOwner = isPersonalWorkspace || dragonfly.persona.id === "owner";
+  const isCommercial = !isPersonalWorkspace && !isOrganizationEmployee && dragonfly.persona.profile.operationScale === "Commercial Farm";
+  const isExport = !isPersonalWorkspace && !isOrganizationEmployee && dragonfly.persona.profile.operationScale === "Enterprise / Export";
   const smartTasks = dragonfly.isDemoMode ? dragonfly.state.tasks : legacyTodayTasks;
   const smartWeather = dragonfly.isDemoMode ? dragonfly.state.weather : weather.now;
   const avgHealth =
@@ -60,12 +62,14 @@ function Dashboard() {
     if (!dragonfly.isDemoMode) return true;
     const smartTask = task as SmartTask;
     const plot = dragonfly.state.plots.find((item) => item.id === smartTask.plot || item.name === smartTask.plot);
-    return (smartTask.farmId ?? plot?.farmId ?? "FARM-PRIMARY") === selectedFarm.id;
+    const isTeamTask = smartTask.origin === "team" || Boolean(smartTask.team);
+    const matchesWorkspace = isPersonalWorkspace ? !isTeamTask : isTeamTask || smartTask.origin === "system";
+    return matchesWorkspace && (smartTask.farmId ?? plot?.farmId ?? "FARM-PRIMARY") === selectedFarm.id;
   });
   const employeeWorker = dragonfly.state.workers.find((worker) => worker.id === "W-004") ?? dragonfly.state.workers[0];
   const todayFarmTasks = farmTasks
     .filter((task) => !dragonfly.isDemoMode || isTaskInPeriod((task as SmartTask).scheduledFor, "today", { start: "", end: "" }))
-    .filter((task) => dragonfly.persona.id !== "employee" || (task as SmartTask).assignedWorkerId === employeeWorker?.id || (!(task as SmartTask).assignedWorkerId && (task as SmartTask).team === employeeWorker?.crew))
+    .filter((task) => !isOrganizationEmployee || (task as SmartTask).assignedWorkerId === employeeWorker?.id || (!(task as SmartTask).assignedWorkerId && (task as SmartTask).team === employeeWorker?.crew))
     .sort(compareDashboardTasks);
   const todayOpenCount = todayFarmTasks.filter((task) => !["Completed", "Cancelled", "Skipped"].includes(getDashboardTaskStatus(task))).length;
   const todayReviewCount = todayFarmTasks.filter((task) => getDashboardTaskStatus(task) === "Supervisor Review").length;
@@ -93,10 +97,10 @@ function Dashboard() {
 
   return (
     <AppShell
-      title={dragonfly.isDemoMode ? selectedFarm.name : "สวัสดี ชาวสวน"}
+      title={dragonfly.isDemoMode ? (isPersonalWorkspace ? "สวนของฉัน" : selectedFarm.name) : "สวัสดี ชาวสวน"}
       subtitle={
         dragonfly.isDemoMode
-          ? `แดชบอร์ด · ${selectedFarm.location} · ${dragonfly.persona.role} · ${dragonfly.persona.subscription}`
+          ? `แดชบอร์ด · ${dragonfly.workspaceLabel} · ${dragonfly.effectiveRole} · ${dragonfly.effectiveSubscription}`
           : "ศุกร์ที่ 7 สิงหาคม 2569"
       }
     >
@@ -111,7 +115,7 @@ function Dashboard() {
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-4" /></span>
               <div className="min-w-0 flex-1">
-                <label htmlFor="dashboard-farm" className="text-xs font-semibold text-primary">ฟาร์มที่กำลังดู</label>
+                <label htmlFor="dashboard-farm" className="text-xs font-semibold text-primary">{isPersonalWorkspace ? "สวนส่วนตัวที่กำลังดู" : "ฟาร์มขององค์กรที่กำลังดู"}</label>
                 <select
                   id="dashboard-farm"
                   value={selectedFarm.id}
@@ -126,7 +130,7 @@ function Dashboard() {
               <span className="inline-flex min-w-0 items-center gap-1"><MapPin className="size-3 shrink-0" />{selectedFarm.type} · {selectedFarm.plotCount} แปลง</span>
               <Badge tone={selectedFarm.status === "Normal" ? "good" : selectedFarm.status === "Blocked" ? "bad" : "warn"}>{selectedFarm.status === "Normal" ? "ปกติ" : selectedFarm.status === "Blocked" ? "ติดขัด" : "ต้องดู"}</Badge>
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{selectedFarm.dataLabel}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{isPersonalWorkspace ? "ข้อมูลในพื้นที่นี้เป็นของบัญชีส่วนตัว ไม่รวมงาน บุคลากร หรือต้นทุนขององค์กร" : selectedFarm.dataLabel}</p>
           </div>
         </Card>
       ) : null}
@@ -292,7 +296,7 @@ function Dashboard() {
             <div>
               <p className="text-xs font-semibold text-foreground">ตรงกับปฏิทิน: วันนี้ · {selectedFarm.name}</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {dragonfly.persona.id === "employee" ? "แสดงเฉพาะงานที่มอบหมายให้คุณ" : "แสดงทุกทีม ทุกโซน และทุกแปลงในฟาร์มนี้"}
+                {isOrganizationEmployee ? "แสดงเฉพาะงานที่องค์กรหรือทีมมอบหมายให้คุณ" : isPersonalWorkspace ? "แสดงเฉพาะ Todo และงานดูแลในสวนของฉัน" : "แสดงทุกทีม ทุกโซน และทุกแปลงในฟาร์มนี้"}
               </p>
             </div>
             <ListChecks className="mt-0.5 size-4 shrink-0 text-primary" />
