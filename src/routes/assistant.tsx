@@ -205,7 +205,7 @@ function AssistantPage() {
       <div className="space-y-3 pb-4">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex gap-2"}>
-            {m.role === "ai" && <BrandMark size="sm" className="rounded-full" />}
+            {m.role === "ai" && <BrandMark size="sm" />}
             <div
               className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-line leading-relaxed ${
                 m.role === "user"
@@ -219,7 +219,7 @@ function AssistantPage() {
         ))}
         {loading && (
           <div className="flex gap-2">
-            <BrandMark size="sm" className="rounded-full" />
+            <BrandMark size="sm" />
             <div className="rounded-2xl rounded-bl-sm bg-muted px-3.5 py-3">
               <div className="flex gap-1">
                 <span

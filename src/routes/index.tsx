@@ -331,7 +331,7 @@ function Dashboard() {
           </div>
           <BrandMark
             size="md"
-            className="rounded-2xl bg-primary-foreground/15 text-primary-foreground shadow-none"
+            className="shadow-none"
           />
         </div>
         <div className="relative mt-5 h-2.5 w-full overflow-hidden rounded-full bg-primary-foreground/20">
@@ -637,7 +637,7 @@ function Dashboard() {
         {plots.map((p) => (
           <Card key={p.id}>
             <div className="flex items-center gap-3">
-              <BrandMark size="md" className="bg-primary-soft text-primary shadow-none" />
+              <BrandMark size="md" className="shadow-none" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-xs text-muted-foreground">
