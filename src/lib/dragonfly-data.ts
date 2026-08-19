@@ -291,6 +291,19 @@ export const organizationPermissionOptions = [
   "รับสินค้าและปรับยอดสต็อก",
 ] as const;
 
+/** ตำแหน่งงานจริงที่ใช้เมื่อเชิญหรือจัดการสมาชิกในองค์กร */
+export const jobPositionOptions = [
+  "คนงาน",
+  "หัวหน้าทีม",
+  "เจ้าหน้าที่ QA",
+  "เจ้าหน้าที่คลัง",
+  "เจ้าหน้าที่จัดซื้อ",
+  "ผู้จัดการฟาร์ม",
+  "ผู้ช่วยสวน",
+] as const;
+
+export type JobPosition = (typeof jobPositionOptions)[number];
+
 export const defaultOrganizationRoles: OrganizationRole[] = [
   {
     id: "ROLE-OWNER",

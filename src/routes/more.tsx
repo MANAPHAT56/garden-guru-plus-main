@@ -135,7 +135,6 @@ function MorePage() {
     setPersona,
     workspaceContext,
     workspaceLabel,
-    effectiveRole,
     effectiveSubscription,
   } = useDragonflyData();
   const isBeginner = persona.profile.knowledgeLevel === "Beginner";
@@ -146,23 +145,18 @@ function MorePage() {
   return (
     <AppShell
       title="เมนูทั้งหมด"
-      subtitle={`${workspaceLabel} · ${effectiveRole} · ${effectiveSubscription}`}
+      subtitle={`${workspaceLabel} · ${effectiveSubscription}`}
     >
       {workspaceContext === "personal" && persona.id !== "employee" ? (
         <ExperienceProgression persona={persona} onAdvance={setPersona} />
       ) : workspaceContext === "personal" ? (
-        <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">บทบาทในพื้นที่นี้: เจ้าของสวน</p><p className="mt-1 text-xs text-muted-foreground">บทบาทพนักงานใช้เฉพาะเมื่อเลือกองค์กร ส่วนสวนนี้ใช้ Todo แปลง รายรับ และข้อมูลของคุณเอง</p></Card>
+        <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">พื้นที่สวนส่วนตัว</p><p className="mt-1 text-xs text-muted-foreground">ข้อมูลที่แสดงเป็นของคุณเท่านั้น แยกจากงานและทีมขององค์กร</p></Card>
       ) : (
         <Card className="border-primary/25 bg-primary-soft/45">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-primary">กำลังใช้พื้นที่ขององค์กร</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                หน้าเดิมจะเปลี่ยนข้อมูลและคำสั่งตามบทบาท {effectiveRole} โดยไม่สร้างเมนูซ้ำ
-              </p>
-            </div>
-            <Badge tone="info">{effectiveRole}</Badge>
-          </div>
+          <p className="text-sm font-semibold text-primary">กำลังใช้พื้นที่ขององค์กร</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            ข้อมูล งาน และคำสั่งในแต่ละหน้าจะเปลี่ยนตามพื้นที่ทำงานและทีมที่คุณสังกัด
+          </p>
         </Card>
       )}
       <SectionTitle>{isOrganizationEmployee ? "งานภาคสนามของฉัน" : "งานของฉัน"}</SectionTitle>
@@ -183,9 +177,9 @@ function MorePage() {
           <Users className="size-6 text-primary" />
           <p className="mt-2 text-sm font-semibold">สมาชิกและทีม</p>
           <p className="text-xs text-muted-foreground">
-            {isOrganizationEmployee ? "ดูขอบเขตทีมของตนเอง โดยไม่เปิดรายชื่อทั้งองค์กร" : "เพิ่มสมาชิก กำหนดบทบาท ทีม และพื้นที่รับผิดชอบ"}
+            {isOrganizationEmployee ? "ดูขอบเขตทีมของตนเอง โดยไม่เปิดรายชื่อทั้งองค์กร" : "เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่รับผิดชอบ"}
           </p>
-          <p className="mt-2 text-[10px] font-semibold text-primary">เหมาะสำหรับ พนักงาน · เจ้าของสวน · หัวหน้าทีม · ผู้จัดการ</p>
+          <p className="mt-2 text-[10px] font-semibold text-primary">เหมาะสำหรับ คนงาน · เจ้าของสวน · หัวหน้าทีม · ผู้จัดการ</p>
         </Card>
       </Link>
       <SectionTitle>{isBeginner && workspaceContext === "personal" ? "เริ่มจัดการสวน" : "Smart Farming"}</SectionTitle>
@@ -255,7 +249,7 @@ function MorePage() {
         <div>
           <p className="text-sm font-semibold">{workspaceLabel}</p>
           <p className="text-xs text-muted-foreground">
-            {effectiveRole} · {effectiveSubscription} · {workspaceContext === "organization" ? state.farm.name : "ข้อมูลส่วนตัวแยกจากองค์กร"}
+            {effectiveSubscription} · {workspaceContext === "organization" ? state.farm.name : "ข้อมูลส่วนตัวแยกจากองค์กร"}
           </p>
         </div>
       </Card>

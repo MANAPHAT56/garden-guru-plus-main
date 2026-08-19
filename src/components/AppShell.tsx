@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { Bell, Home, LayoutGrid, Leaf, MessageCircle, ScanLine } from "lucide-react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { BrandMark } from "@/components/BrandMark";
-import { DemoModeControls } from "@/components/DemoModeControls";
 import { GuidedTutorial } from "@/components/GuidedTutorial";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceContextSwitcher } from "@/components/WorkspaceContextSwitcher";
@@ -27,7 +26,6 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background">
       <div className="app-frame mx-auto flex min-h-screen w-full max-w-md flex-col bg-background md:max-w-6xl">
-        <DemoModeControls />
         <WorkspaceContextSwitcher />
         <header data-tour="app-shell-header" className="sticky top-0 z-20 border-b border-border/60 bg-card/88 px-5 pt-[max(1.1rem,env(safe-area-inset-top))] pb-3.5 text-foreground backdrop-blur-2xl">
           <div className="flex items-start justify-between gap-3">
