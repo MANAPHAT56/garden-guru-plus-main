@@ -47,12 +47,6 @@ export const Route = createFileRoute("/more")({
 
 const coreMenu = [
   {
-    to: "/onboarding",
-    icon: Bot,
-    label: "โปรไฟล์ฟาร์ม",
-    desc: "Knowledge level + operation scale",
-  },
-  {
     to: "/academy",
     icon: GraduationCap,
     label: "EasyPlants Academy",

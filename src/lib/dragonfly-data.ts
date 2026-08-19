@@ -2346,7 +2346,7 @@ export function getDemoState(): DemoState {
   }
 
   const personaId =
-    (window.localStorage.getItem(PERSONA_KEY) as DemoPersonaId | null) ?? "commercial";
+    (window.localStorage.getItem(PERSONA_KEY) as DemoPersonaId | null) ?? "export";
   const state = buildDemoState(personaId);
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   return state;
@@ -2354,9 +2354,7 @@ export function getDemoState(): DemoState {
 
 function normalizeDemoState(stored: unknown): DemoState {
   const saved = stored && typeof stored === "object" ? (stored as Partial<DemoState>) : {};
-  const personaId = demoPersonas.some((persona) => persona.id === saved.personaId)
-    ? (saved.personaId as DemoPersonaId)
-    : "commercial";
+const personaId = "export" as DemoPersonaId;
   const baseline = buildDemoState(personaId);
   const savedTasks = Array.isArray(saved.tasks) ? saved.tasks : undefined;
   const isLegacySchedule =

@@ -28,6 +28,7 @@ import { Route as MarketRouteImport } from './routes/market'
 import { Route as MonitorRouteImport } from './routes/monitor'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as MyWorkRouteImport } from './routes/my-work'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as PlansRouteImport } from './routes/plans'
@@ -135,6 +136,11 @@ const MyWorkRoute = MyWorkRouteImport.update({
   path: '/my-work',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
   '/my-work': typeof MyWorkRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
   '/plans': typeof PlansRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
   '/my-work': typeof MyWorkRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
   '/plans': typeof PlansRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/monitor': typeof MonitorRoute
   '/more': typeof MoreRoute
   '/my-work': typeof MyWorkRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
   '/plans': typeof PlansRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/monitor'
     | '/more'
     | '/my-work'
+    | '/notifications'
     | '/onboarding'
     | '/operations'
     | '/plans'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/monitor'
     | '/more'
     | '/my-work'
+    | '/notifications'
     | '/onboarding'
     | '/operations'
     | '/plans'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/monitor'
     | '/more'
     | '/my-work'
+    | '/notifications'
     | '/onboarding'
     | '/operations'
     | '/plans'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   MonitorRoute: typeof MonitorRoute
   MoreRoute: typeof MoreRoute
   MyWorkRoute: typeof MyWorkRoute
+  NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OperationsRoute: typeof OperationsRoute
   PlansRoute: typeof PlansRoute
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyWorkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -655,6 +675,7 @@ const rootRouteChildren: RootRouteChildren = {
   MonitorRoute: MonitorRoute,
   MoreRoute: MoreRoute,
   MyWorkRoute: MyWorkRoute,
+  NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
   OperationsRoute: OperationsRoute,
   PlansRoute: PlansRoute,

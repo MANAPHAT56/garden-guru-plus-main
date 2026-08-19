@@ -29,11 +29,7 @@ function SettingsPage() {
         </div>
       </Card>
 
-      <SectionTitle>ระดับความซับซ้อนของหน้าจอ</SectionTitle>
-      <Card className="space-y-2">
-        <p className="text-xs text-muted-foreground">มือใหม่/มาตรฐาน/ขั้นสูง เป็นการจัดการความซับซ้อนของ UI ผู้ใช้เปลี่ยนกลับได้เสมอ</p>
-        <Link to="/onboarding" className="block rounded-lg border border-border py-2.5 text-center text-xs font-semibold">ปรับโปรไฟล์และรูปแบบการใช้งาน</Link>
-      </Card>
+
 
       <SectionTitle>องค์กรและแพ็กเกจ</SectionTitle>
       <Card className="flex items-start gap-3">

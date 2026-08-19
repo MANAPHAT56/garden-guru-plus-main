@@ -1,6 +1,6 @@
 import { ArrowRight, Check, ChevronLeft, X } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
 import {
   findGuidedTutorial,
@@ -34,16 +34,25 @@ export function GuidedTutorial() {
     if (session.stepIndex >= tour.steps.length) stopGuidedTutorial();
   }, [session, tour]);
 
+  const lastStepIdRef = useRef(step?.id);
+
   useEffect(() => {
     if (!step) {
       setTargetRect(null);
+      lastStepIdRef.current = undefined;
       return;
     }
     if (pathname !== step.route) {
-      setTargetRect(null);
-      void navigate({ to: step.route });
+      if (lastStepIdRef.current !== step.id) {
+        setTargetRect(null);
+        void navigate({ to: step.route });
+        lastStepIdRef.current = step.id;
+      } else {
+        stopGuidedTutorial();
+      }
       return;
     }
+    lastStepIdRef.current = step.id;
 
     let cancelled = false;
     let attempt = 0;
