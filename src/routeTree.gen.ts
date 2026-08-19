@@ -31,6 +31,7 @@ import { Route as MyWorkRouteImport } from './routes/my-work'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OperationsRouteImport } from './routes/operations'
+import { Route as PlansRouteImport } from './routes/plans'
 import { Route as PlotsRouteImport } from './routes/plots'
 import { Route as RecommendRouteImport } from './routes/recommend'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -150,6 +151,11 @@ const OperationsRoute = OperationsRouteImport.update({
   path: '/operations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlansRoute = PlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlotsRoute = PlotsRouteImport.update({
   id: '/plots',
   path: '/plots',
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
+  '/plans': typeof PlansRoute
   '/plots': typeof PlotsRoute
   '/recommend': typeof RecommendRoute
   '/reports': typeof ReportsRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
+  '/plans': typeof PlansRoute
   '/plots': typeof PlotsRoute
   '/recommend': typeof RecommendRoute
   '/reports': typeof ReportsRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/operations': typeof OperationsRoute
+  '/plans': typeof PlansRoute
   '/plots': typeof PlotsRoute
   '/recommend': typeof RecommendRoute
   '/reports': typeof ReportsRoute
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/operations'
+    | '/plans'
     | '/plots'
     | '/recommend'
     | '/reports'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/operations'
+    | '/plans'
     | '/plots'
     | '/recommend'
     | '/reports'
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/operations'
+    | '/plans'
     | '/plots'
     | '/recommend'
     | '/reports'
@@ -410,6 +422,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OperationsRoute: typeof OperationsRoute
+  PlansRoute: typeof PlansRoute
   PlotsRoute: typeof PlotsRoute
   RecommendRoute: typeof RecommendRoute
   ReportsRoute: typeof ReportsRoute
@@ -576,6 +589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plans': {
+      id: '/plans'
+      path: '/plans'
+      fullPath: '/plans'
+      preLoaderRoute: typeof PlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plots': {
       id: '/plots'
       path: '/plots'
@@ -658,6 +678,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
   OperationsRoute: OperationsRoute,
+  PlansRoute: PlansRoute,
   PlotsRoute: PlotsRoute,
   RecommendRoute: RecommendRoute,
   ReportsRoute: ReportsRoute,

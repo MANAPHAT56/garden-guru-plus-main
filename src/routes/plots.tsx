@@ -870,7 +870,7 @@ function PlotsPage() {
             ) : null}
           </Card>
         ))}
-        {isLoaded && filteredPlots.length === 0 ? <Card className="py-8 text-center text-sm text-muted-foreground">ไม่พบแปลงที่ตรงกับตัวกรอง เลือก “ทั้งหมด” เพื่อดูทุกแปลง</Card> : null}
+        {isLoaded && filteredPlots.length === 0 ? <Card className="py-8 text-center text-sm text-muted-foreground">{dragonfly.workspaceContext === "personal" && farmPlots.length === 0 ? "สวนส่วนตัวยังไม่มีแปลง กด “เพิ่มแปลงจากตำแหน่ง GPS” เพื่อเริ่มต้น" : "ไม่พบแปลงที่ตรงกับตัวกรอง เลือก “ทั้งหมด” เพื่อดูทุกแปลง"}</Card> : null}
       </div>
 
       {/* dialog สำหรับบันทึกพิกัดแปลง */}

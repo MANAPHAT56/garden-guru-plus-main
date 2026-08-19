@@ -14,6 +14,8 @@ import { AppShell, Badge, Card, SectionTitle, baht } from "@/components/AppShell
 import { transactions as initialTransactions } from "@/lib/farm-data";
 import { toast } from "sonner";
 import { TimeRangeFilter } from "@/components/TimeRangeFilter";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { useDragonflyData } from "@/hooks/useDragonflyData";
 
 export const Route = createFileRoute("/costs")({
   head: () => ({
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/costs")({
 });
 
 function CostsPage() {
+  const { state, dashboardFarms, activeDashboardFarm } = useDragonflyData();
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<"income" | "expense">("income");
@@ -37,6 +40,9 @@ function CostsPage() {
   const [rowFilter, setRowFilter] = useState("ทั้งหมด");
   const [timeFilter, setTimeFilter] = useState("month");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
+  const [farmFilter, setFarmFilter] = useState(activeDashboardFarm.id);
+  const [siteFilter, setSiteFilter] = useState("ทั้งหมด");
+  const [plotFilter, setPlotFilter] = useState("ทั้งหมด");
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -44,28 +50,41 @@ function CostsPage() {
       const stored = localStorage.getItem("garden_guru_transactions");
       if (stored) {
         try {
-          setRows(normalizeTransactionDates(JSON.parse(stored)));
+          setRows(normalizeTransactionDates(JSON.parse(stored), state.plots));
         } catch (e) {
-          setRows(normalizeTransactionDates(initialTransactions));
+          setRows(normalizeTransactionDates(initialTransactions, state.plots));
         }
       } else {
-        const initialRows = normalizeTransactionDates(initialTransactions);
+        const initialRows = normalizeTransactionDates(initialTransactions, state.plots);
         localStorage.setItem("garden_guru_transactions", JSON.stringify(initialRows));
         setRows(initialRows);
       }
     }
-  }, []);
+  }, [state.plots]);
 
-  const income = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const cost = rows.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
-  const filteredRows = rows.filter((row) =>
-    (rowFilter === "ทั้งหมด" || (rowFilter === "รายรับ" ? row.amount > 0 : row.amount < 0)) && isInTransactionPeriod(row.recordedAt, timeFilter, customRange)
-  );
+  const scopedSites = useMemo(() => state.sites.filter((site) => farmFilter === "ทั้งหมด" || (site.farmId ?? "FARM-PRIMARY") === farmFilter), [farmFilter, state.sites]);
+  const scopedPlots = useMemo(() => state.plots.filter((plot) =>
+    (farmFilter === "ทั้งหมด" || (plot.farmId ?? "FARM-PRIMARY") === farmFilter) &&
+    (siteFilter === "ทั้งหมด" || plot.siteId === siteFilter),
+  ), [farmFilter, siteFilter, state.plots]);
+  const scopeRows = useMemo(() => rows.filter((row) =>
+    (farmFilter === "ทั้งหมด" || row.farmId === farmFilter) &&
+    (siteFilter === "ทั้งหมด" || row.siteId === siteFilter) &&
+    (plotFilter === "ทั้งหมด" || row.plotId === plotFilter),
+  ), [farmFilter, plotFilter, rows, siteFilter]);
+  const periodRows = useMemo(() => scopeRows.filter((row) => isInTransactionPeriod(row.recordedAt, timeFilter, customRange)), [customRange, scopeRows, timeFilter]);
+  const income = periodRows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const cost = periodRows.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const filteredRows = periodRows.filter((row) => rowFilter === "ทั้งหมด" || (rowFilter === "รายรับ" ? row.amount > 0 : row.amount < 0));
 
   const save = () => {
     const n = Number(amount);
     if (!title.trim() || !n) {
       toast.error("กรุณากรอกรายการและจำนวนเงิน");
+      return;
+    }
+    if (farmFilter === "ทั้งหมด") {
+      toast.error("เลือกสวนที่จะบันทึกรายการก่อน");
       return;
     }
     
@@ -78,6 +97,9 @@ function CostsPage() {
       category: kind === "income" ? "รายได้" : "ค่าใช้จ่าย",
       amount: kind === "income" ? n : -n,
       recordedAt: new Date().toISOString().slice(0, 10),
+      farmId: farmFilter,
+      siteId: siteFilter === "ทั้งหมด" ? undefined : siteFilter,
+      plotId: plotFilter === "ทั้งหมด" ? undefined : plotFilter,
     };
 
     const updated = [newTx, ...rows];
@@ -96,8 +118,8 @@ function CostsPage() {
 
   // Recalculate monthly finance chart data dynamically
   const monthlyFinanceComputed = useMemo(() => {
-    const augIncome = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-    const augCost = rows.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const augIncome = scopeRows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const augCost = scopeRows.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
 
     return [
       { month: "มี.ค.", income: 42000, cost: 18000 },
@@ -107,7 +129,7 @@ function CostsPage() {
       { month: "ก.ค.", income: 88000, cost: 24500 },
       { month: "ส.ค.", income: augIncome, cost: augCost },
     ];
-  }, [rows]);
+  }, [scopeRows]);
 
   // Recalculate cost breakdown pie chart dynamically
   const costBreakdownComputed = useMemo(() => {
@@ -117,7 +139,7 @@ function CostsPage() {
     let energyVal = 0;
     let otherVal = 0;
 
-    rows.filter((t) => t.amount < 0).forEach((t) => {
+    scopeRows.filter((t) => t.amount < 0).forEach((t) => {
       const amt = Math.abs(t.amount);
       const name = t.title.toLowerCase();
       if (name.includes("ปุ๋ย") || name.includes("คอก")) {
@@ -145,10 +167,42 @@ function CostsPage() {
     }
 
     return breakdown.filter((item) => item.value > 0);
-  }, [rows]);
+  }, [scopeRows]);
 
   return (
-    <AppShell title="ต้นทุนและรายได้" subtitle="สิงหาคม 2569">
+    <AppShell title="ต้นทุนและรายได้" subtitle="เลือกขอบเขตสวน โซน แปลง และช่วงเวลาที่ต้องการวิเคราะห์">
+      <Card className="space-y-3" data-tour="costs-scope-filter">
+        <div>
+          <p className="text-sm font-semibold">ขอบเขตข้อมูลการเงิน</p>
+          <p className="mt-1 text-xs text-muted-foreground">ยอดสรุป กราฟ และรายการด้านล่างจะเปลี่ยนตามขอบเขตที่เลือก</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <SearchableSelect
+            label="สวน/ฟาร์ม"
+            options={dashboardFarms.map((farm) => ({ value: farm.id, label: `${farm.name} · ${farm.location}` }))}
+            value={farmFilter}
+            onChange={(value) => { setFarmFilter(value); setSiteFilter("ทั้งหมด"); setPlotFilter("ทั้งหมด"); }}
+            allLabel="ทุกสวนที่เข้าถึงได้"
+            searchPlaceholder="ค้นหาชื่อสวนหรือพื้นที่"
+          />
+          <SearchableSelect
+            label="โซน"
+            options={["ทั้งหมด", ...scopedSites.map((site) => ({ value: site.id, label: `${site.code} · ${site.name}` }))]}
+            value={siteFilter}
+            onChange={(value) => { setSiteFilter(value); setPlotFilter("ทั้งหมด"); }}
+            allLabel="ทุกโซนในสวน"
+            searchPlaceholder="ค้นหารหัสหรือชื่อโซน"
+          />
+          <SearchableSelect
+            label="แปลง"
+            options={["ทั้งหมด", ...scopedPlots.map((plot) => ({ value: plot.id, label: `${plot.id} · ${plot.name} · ${plot.crop}` }))]}
+            value={plotFilter}
+            onChange={setPlotFilter}
+            allLabel="ทุกแปลงในขอบเขต"
+            searchPlaceholder="ค้นหารหัส ชื่อแปลง หรือพืช"
+          />
+        </div>
+      </Card>
       <div className="grid grid-cols-3 gap-2">
         <Card className="text-center">
           <p className="text-[11px] text-muted-foreground">รายรับ</p>
@@ -168,7 +222,7 @@ function CostsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold">จดบันทึกครั้งนี้</p>
-            <p className="text-xs text-muted-foreground">รายรับ รายจ่าย และผลผลิตที่ได้</p>
+            <p className="text-xs text-muted-foreground">รายรับ รายจ่าย และผลผลิตที่ได้ จะผูกกับขอบเขตด้านบน</p>
           </div>
           <button
             onClick={() => setOpen((v) => !v)}
@@ -226,6 +280,7 @@ function CostsPage() {
 
       <SectionTitle>รายรับ-รายจ่าย 6 เดือน</SectionTitle>
       <Card>
+        <p className="mb-3 text-[11px] text-muted-foreground">กราฟใช้ขอบเขตสวน โซน และแปลงที่เลือก ส่วนเดือนที่ยังไม่มีรายการจริงแสดงข้อมูลตัวอย่าง</p>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyFinanceComputed}>
@@ -275,7 +330,7 @@ function CostsPage() {
       <Card className="space-y-3">
         <TimeRangeFilter value={timeFilter} onChange={setTimeFilter} options={[{ value: "month", label: "เดือนนี้" }, { value: "3m", label: "3 เดือน" }, { value: "all", label: "ทั้งหมด" }]} label="วันที่บันทึกรายการ" dateRange={customRange} onDateRangeChange={setCustomRange} />
         <div className="flex gap-2 overflow-x-auto pb-1">{["ทั้งหมด", "รายรับ", "รายจ่าย"].map((filter) => <button key={filter} onClick={() => setRowFilter(filter)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${rowFilter === filter ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>{filter}</button>)}</div>
-        <p className="text-xs text-muted-foreground">กำลังแสดง {filteredRows.length} จาก {rows.length} รายการ</p>
+        <p className="text-xs text-muted-foreground">กำลังแสดง {filteredRows.length} จาก {scopeRows.length} รายการในขอบเขตที่เลือก</p>
         {filteredRows.map((t) => (
           <div key={t.id} className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-sm">
@@ -303,11 +358,17 @@ function CostsPage() {
   );
 }
 
-function normalizeTransactionDates(rows: any[]) {
-  return rows.map((row) => {
-    if (row.recordedAt) return row;
+function normalizeTransactionDates(rows: any[], plots: Array<{ id: string; farmId?: string; siteId?: string }>) {
+  return rows.map((row, index) => {
     const day = Number(String(row.date).match(/\d+/)?.[0] ?? 1);
-    return { ...row, recordedAt: `2026-08-${String(day).padStart(2, "0")}` };
+    const fallbackPlot = plots[index % Math.max(plots.length, 1)];
+    return {
+      ...row,
+      recordedAt: row.recordedAt ?? `2026-08-${String(day).padStart(2, "0")}`,
+      farmId: row.farmId ?? fallbackPlot?.farmId ?? "FARM-PRIMARY",
+      siteId: row.siteId ?? fallbackPlot?.siteId,
+      plotId: row.plotId ?? fallbackPlot?.id,
+    };
   });
 }
 

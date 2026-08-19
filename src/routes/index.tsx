@@ -57,7 +57,7 @@ function Dashboard() {
   const area = plots.reduce((s, p) => s + p.area, 0);
   const selectedFarm = dragonfly.activeDashboardFarm;
   const isPrimaryFarm = selectedFarm.id === "FARM-PRIMARY";
-  const farmHealth = isPrimaryFarm ? avgHealth : selectedFarm.status === "Needs attention" ? 78 : 91;
+  const farmHealth = selectedFarm.plotCount === 0 ? 0 : isPrimaryFarm ? avgHealth : selectedFarm.status === "Needs attention" ? 78 : 91;
   const farmTasks = smartTasks.filter((task) => {
     if (!dragonfly.isDemoMode) return true;
     const smartTask = task as SmartTask;
@@ -106,11 +106,11 @@ function Dashboard() {
     >
       {dragonfly.isDemoMode ? (
         <Card data-tour="dashboard-farm" className="overflow-hidden p-0">
-          <img
+          {selectedFarm.plotCount > 0 ? <img
             src="/images/durian-orchard-dashboard.jpg"
             alt="สวนทุเรียนที่กำลังดูบนแดชบอร์ด"
             className="aspect-[16/7] w-full object-cover"
-          />
+          /> : <div className="flex aspect-[16/5] items-center justify-center bg-primary-soft text-primary"><Sprout className="size-10" /></div>}
           <div className="p-4">
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-4" /></span>
@@ -134,6 +134,8 @@ function Dashboard() {
           </div>
         </Card>
       ) : null}
+
+      {isPersonalWorkspace && selectedFarm.plotCount === 0 ? <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">เริ่มสวนส่วนตัวของคุณ</p><p className="mt-1 text-xs text-muted-foreground">พื้นที่นี้ยังไม่มีแปลงและไม่ดึงข้อมูลจากบริษัท เพิ่มแปลงแรกจาก GPS แล้ว Todo คำแนะนำ และประวัติการดูแลจะเชื่อมกับสวนนี้เท่านั้น</p><Link to="/plots" className="mt-3 block rounded-lg bg-primary py-2.5 text-center text-xs font-semibold text-primary-foreground">เพิ่มแปลงแรก</Link></Card> : null}
 
       {isBeginner ? (
         <Card className="border-primary/30 bg-primary-soft/60">
@@ -279,7 +281,7 @@ function Dashboard() {
         </Link>
       </div>
 
-      <ExperienceProgression persona={dragonfly.persona} onAdvance={dragonfly.setPersona} />
+      {!(isPersonalWorkspace && dragonfly.persona.id === "employee") ? <ExperienceProgression persona={dragonfly.persona} onAdvance={dragonfly.setPersona} /> : null}
 
       <SectionTitle
         action={

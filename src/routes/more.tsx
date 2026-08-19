@@ -22,6 +22,7 @@ import {
   Boxes,
   Wrench,
   LockKeyhole,
+  Crown,
 } from "lucide-react";
 import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
@@ -116,10 +117,11 @@ const techMenu = [
 ] as const;
 
 function getFeatureAudience(route: string) {
-  if (["/onboarding", "/academy"].includes(route)) return "เหมาะสำหรับ มือใหม่ · เจ้าของสวน";
+  if (route === "/onboarding") return "เหมาะสำหรับ มือใหม่ · เจ้าของสวน";
+  if (route === "/academy") return "เหมาะสำหรับ ทุกบทบาทที่ต้องการฝึกใช้ระบบ";
   if (["/weather", "/market", "/community", "/notifications"].includes(route)) return "เหมาะสำหรับ ทุกบทบาท";
   if (["/calendar", "/monitor", "/disaster"].includes(route)) return "เหมาะสำหรับ เจ้าของสวน · พนักงาน · ผู้จัดการ";
-  if (["/recommend", "/costs", "/yield"].includes(route)) return "เหมาะสำหรับ เจ้าของสวน · ผู้จัดการ";
+  if (["/crop-calendar", "/recommend", "/costs", "/yield"].includes(route)) return "เหมาะสำหรับ เจ้าของสวน · ผู้จัดการ";
   if (["/inventory", "/machinery"].includes(route)) return "เหมาะสำหรับ เจ้าหน้าที่คลัง · ช่าง · ผู้จัดการ";
   if (["/traceability", "/documents", "/reports"].includes(route)) return "เหมาะสำหรับ QA · ผู้จัดการ · เจ้าขององค์กร";
   if (["/farm-pro", "/operations"].includes(route)) return "เหมาะสำหรับ หัวหน้าทีม · ผู้จัดการ · เจ้าขององค์กร";
@@ -146,8 +148,10 @@ function MorePage() {
       title="เมนูทั้งหมด"
       subtitle={`${workspaceLabel} · ${effectiveRole} · ${effectiveSubscription}`}
     >
-      {workspaceContext === "personal" ? (
+      {workspaceContext === "personal" && persona.id !== "employee" ? (
         <ExperienceProgression persona={persona} onAdvance={setPersona} />
+      ) : workspaceContext === "personal" ? (
+        <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">บทบาทในพื้นที่นี้: เจ้าของสวน</p><p className="mt-1 text-xs text-muted-foreground">บทบาทพนักงานใช้เฉพาะเมื่อเลือกองค์กร ส่วนสวนนี้ใช้ Todo แปลง รายรับ และข้อมูลของคุณเอง</p></Card>
       ) : (
         <Card className="border-primary/25 bg-primary-soft/45">
           <div className="flex items-start justify-between gap-3">
@@ -181,7 +185,7 @@ function MorePage() {
           <p className="text-xs text-muted-foreground">
             {isOrganizationEmployee ? "ดูขอบเขตทีมของตนเอง โดยไม่เปิดรายชื่อทั้งองค์กร" : "เพิ่มสมาชิก กำหนดบทบาท ทีม และพื้นที่รับผิดชอบ"}
           </p>
-          <p className="mt-2 text-[10px] font-semibold text-primary">เหมาะสำหรับ เจ้าของสวน · หัวหน้าทีม · ผู้จัดการ</p>
+          <p className="mt-2 text-[10px] font-semibold text-primary">เหมาะสำหรับ พนักงาน · เจ้าของสวน · หัวหน้าทีม · ผู้จัดการ</p>
         </Card>
       </Link>
       <SectionTitle>{isBeginner && workspaceContext === "personal" ? "เริ่มจัดการสวน" : "Smart Farming"}</SectionTitle>
@@ -255,6 +259,15 @@ function MorePage() {
           </p>
         </div>
       </Card>
+      <Link to="/plans">
+        <Card className="mt-3 flex items-center gap-3 border-primary/25 bg-primary-soft/35">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Crown className="size-5" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">แผนและสมาชิก</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">เปรียบเทียบ Free, Pro, Pro Max และจัดการสิทธิ์สมาชิก</p>
+          </div>
+        </Card>
+      </Link>
 
       <SectionTitle>การแสดงผล</SectionTitle>
       <Card className="flex items-center justify-between gap-3">

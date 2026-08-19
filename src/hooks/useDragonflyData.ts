@@ -37,6 +37,7 @@ export type WorkspaceContext = "personal" | "organization";
 
 const WORKSPACE_CONTEXT_KEY = "easyplants_workspace_context";
 const WORKSPACE_CONTEXT_EVENT = "easyplants_workspace_context_updated";
+export const PERSONAL_FARM_ID = "FARM-PERSONAL";
 
 function getDefaultWorkspaceContext(personaId: DemoPersonaId): WorkspaceContext {
   return ["employee", "commercial", "export"].includes(personaId)
@@ -94,7 +95,30 @@ export function useDragonflyData() {
     ? "องค์กร EasyPlants Produce"
     : "สวนของฉัน";
   const [activeDashboardFarmId, setActiveDashboardFarmId] = useState("FARM-PRIMARY");
-  const dashboardFarms = useMemo(() => getDashboardFarms(state), [state]);
+  const dashboardFarms = useMemo(() => {
+    const organizationFarms = getDashboardFarms(state);
+    const needsSeparatedPersonalFarm =
+      workspaceContext === "personal" && ["employee", "commercial", "export"].includes(persona.id);
+    if (!needsSeparatedPersonalFarm) return organizationFarms;
+    const personalPlots = state.plots.filter(
+      (plot) => (plot.farmId ?? "FARM-PRIMARY") === PERSONAL_FARM_ID,
+    );
+    const crops = [...new Set(personalPlots.map((plot) => plot.crop))];
+    return [{
+      id: PERSONAL_FARM_ID,
+      name: "สวนส่วนตัวของฉัน",
+      type: "Personal Farm",
+      areaRai: personalPlots.reduce((sum, plot) => sum + plot.area, 0),
+      primaryCrop: crops[0] ?? "ยังไม่ระบุพืช",
+      varieties: crops,
+      plotCount: personalPlots.length,
+      treeCount: personalPlots.reduce((sum, plot) => sum + plot.trees, 0),
+      workerCount: 0,
+      location: "ยังไม่ระบุพื้นที่",
+      status: "Normal" as const,
+      dataLabel: "ข้อมูลสวนส่วนตัว แยกจากฟาร์ม งาน และบุคลากรขององค์กร",
+    }];
+  }, [persona.id, state, workspaceContext]);
   const activeDashboardFarm =
     dashboardFarms.find((farm) => farm.id === activeDashboardFarmId) ?? dashboardFarms[0];
 
