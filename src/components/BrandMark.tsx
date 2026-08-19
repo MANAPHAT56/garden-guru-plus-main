@@ -1,4 +1,4 @@
-import { Leaf, Sprout } from "lucide-react";
+// โลโก้ถูกเปลี่ยนเป็นรูปภาพแล้ว
 
 export function BrandMark({
   className = "",
@@ -15,15 +15,10 @@ export function BrandMark({
 
   return (
     <span
-      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden bg-primary text-primary-foreground shadow-[0_8px_18px_-10px_oklch(0.3_0.08_145_/_0.7)] ${sizes[size]} ${className}`}
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden ${sizes[size]} ${className}`}
       aria-label="สวนอัจฉริยะ"
     >
-      <span className="absolute -right-2 -top-2 size-7 rounded-full bg-white/15" />
-      <Sprout className="relative size-[58%]" strokeWidth={2.3} />
-      <Leaf
-        className="absolute bottom-1.5 right-1.5 size-[25%] text-primary-foreground/60"
-        strokeWidth={2.5}
-      />
+      <img src="/images/logo.png" alt="Logo" className="h-full w-full object-cover" />
     </span>
   );
 }
