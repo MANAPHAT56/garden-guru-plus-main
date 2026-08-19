@@ -8,9 +8,9 @@ export function BrandMark({
   size?: "sm" | "md" | "lg";
 }) {
   const sizes = {
-    sm: "size-8 rounded-xl",
-    md: "size-11 rounded-2xl",
-    lg: "size-16 rounded-[1.4rem]",
+    sm: "h-9 w-auto rounded-xl",
+    md: "h-12 w-auto rounded-2xl",
+    lg: "h-16 w-auto rounded-[1.4rem]",
   };
 
   return (
@@ -18,7 +18,7 @@ export function BrandMark({
       className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden ${sizes[size]} ${className}`}
       aria-label="สวนอัจฉริยะ"
     >
-      <img src="/images/logo.png" alt="Logo" className="h-full w-full object-cover" />
+      <img src="/images/logo.png" alt="Logo" className="h-full w-auto object-contain drop-shadow-sm" />
     </span>
   );
 }

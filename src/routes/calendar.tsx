@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Droplets,
   PackageCheck,
+  Plus,
   Scissors,
   Sprout,
   Trash2,
