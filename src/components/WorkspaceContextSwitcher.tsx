@@ -3,14 +3,8 @@ import { Building2, Check, ChevronDown, RotateCcw, Sprout } from "lucide-react";
 import { useDragonflyData, type WorkspaceContext } from "@/hooks/useDragonflyData";
 
 export function WorkspaceContextSwitcher() {
-  const {
-    isDemoMode,
-    workspaceContext,
-    setWorkspaceContext,
-    workspaceLabel,
-    resetDemo,
-    state,
-  } = useDragonflyData();
+  const { isDemoMode, workspaceContext, setWorkspaceContext, workspaceLabel, resetDemo, state } =
+    useDragonflyData();
 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -38,14 +32,10 @@ export function WorkspaceContextSwitcher() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="เลือกพื้นที่ทำงาน"
-        className="flex h-9 items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 text-left text-sm transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="flex h-10 items-center gap-1.5 rounded-2xl border border-border/70 bg-card px-2.5 text-left text-sm shadow-sm hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          {isOrganization ? (
-            <Building2 className="size-3" />
-          ) : (
-            <Sprout className="size-3" />
-          )}
+          {isOrganization ? <Building2 className="size-3" /> : <Sprout className="size-3" />}
         </span>
         <span className="text-[11px] font-semibold leading-none text-foreground">
           {isOrganization ? "องค์กร" : "สวนฉัน"}
@@ -78,7 +68,9 @@ export function WorkspaceContextSwitcher() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-foreground">สวนของฉัน</span>
-                <span className="block text-[10px] text-muted-foreground">ข้อมูลส่วนตัว แยกจากองค์กร</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  ข้อมูลส่วนตัว แยกจากองค์กร
+                </span>
               </span>
               {!isOrganization && <Check className="size-4 shrink-0 text-primary" />}
             </button>
@@ -97,8 +89,12 @@ export function WorkspaceContextSwitcher() {
                 <Building2 className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold text-foreground">{state.farm.name}</span>
-                <span className="block text-[10px] text-muted-foreground">ข้อมูลทีม ฟาร์ม และงานขององค์กร</span>
+                <span className="block text-xs font-semibold text-foreground">
+                  {state.farm.name}
+                </span>
+                <span className="block text-[10px] text-muted-foreground">
+                  ข้อมูลทีม ฟาร์ม และงานขององค์กร
+                </span>
               </span>
               {isOrganization && <Check className="size-4 shrink-0 text-primary" />}
             </button>
@@ -110,7 +106,11 @@ export function WorkspaceContextSwitcher() {
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm("Reset all demo changes and restore the original demonstration dataset?")) {
+                  if (
+                    window.confirm(
+                      "Reset all demo changes and restore the original demonstration dataset?",
+                    )
+                  ) {
                     resetDemo();
                     setOpen(false);
                   }

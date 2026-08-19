@@ -30,7 +30,7 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "เปลี่ยนเป็นโหมดสว่าง" : "เปลี่ยนเป็นโหมดมืด"}
-      className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="flex size-10 items-center justify-center rounded-2xl border border-border/70 bg-card text-foreground shadow-sm hover:bg-primary-soft hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {ready && isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
     </button>
