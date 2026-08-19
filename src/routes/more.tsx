@@ -67,6 +67,12 @@ const coreMenu = [
 ] as const;
 
 const proMenu = [
+  {
+    to: "/workers",
+    icon: Users,
+    label: "สมาชิกและทีม",
+    desc: "เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่",
+  },
   { to: "/farm-pro", icon: Factory, label: "งานและทีม", desc: "งาน คนในทีม และแผนผลิตในหน้าเดียว" },
   {
     to: "/operations",
@@ -153,16 +159,7 @@ function MorePage() {
           </p>
         </Card>
       </Link>
-      <SectionTitle>ทีมและสมาชิก</SectionTitle>
-      <Link to="/workers">
-        <Card className="border-primary/25 bg-primary-soft/45">
-          <Users className="size-6 text-primary" />
-          <p className="mt-2 text-sm font-semibold">สมาชิกและทีม</p>
-          <p className="text-xs text-muted-foreground">
-            เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่รับผิดชอบ
-          </p>
-        </Card>
-      </Link>
+
       <SectionTitle>Smart Farming</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
         {coreMenu.map((m) => {

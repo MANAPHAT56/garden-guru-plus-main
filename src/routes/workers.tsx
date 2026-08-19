@@ -60,19 +60,6 @@ function WorkersPage() {
     return "muted";
   };
 
-  if (workspaceContext === "personal") {
-    return <AppShell title="สมาชิกสวนของฉัน" subtitle={`${workspaceLabel} · สวนส่วนตัว`}>
-      <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">ข้อมูลสมาชิกส่วนตัวแยกจากองค์กร</p><p className="mt-1 text-xs text-muted-foreground">รายชื่อทีมบริษัทจะไม่แสดงในพื้นที่นี้ คุณสามารถเชิญคนในครอบครัวหรือผู้ช่วยสวนด้วยอีเมลได้</p></Card>
-      <SectionTitle action={<button onClick={() => setShowAddWorker((value) => !value)} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">เชิญผู้ช่วย</button>}>ผู้ช่วยสวน · 0 คน</SectionTitle>
-      {showAddWorker ? <Card className="space-y-3"><label className="block text-xs font-semibold text-muted-foreground">อีเมลผู้ช่วยสวน<textarea value={inviteEmails} onChange={(event) => setInviteEmails(event.target.value)} rows={3} placeholder={"somchai@example.com\nsuda@example.com"} className="mt-1.5 block w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary" /></label><button onClick={() => { const result = inviteMembers(inviteEmails.split(/[\n,;]+/), "ผู้ช่วยสวน", "สวนของฉัน"); setInviteMessage(result.sent ? `บันทึกคำเชิญผู้ช่วยสวน ${result.sent} คนแล้ว` : "ยังไม่มีอีเมลที่ส่งคำเชิญได้"); if (result.sent) setInviteEmails(""); }} className="w-full rounded-lg bg-primary py-2.5 text-xs font-semibold text-primary-foreground">ส่งคำเชิญ</button><p className="text-[11px] text-muted-foreground">Demo Mode: ยังไม่ส่งอีเมลจริง และข้อมูลนี้ไม่เกี่ยวกับสมาชิกขององค์กร</p></Card> : null}
-      {inviteMessage ? <Card className="text-xs text-primary">{inviteMessage}</Card> : null}
-      <Card className="border-dashed text-center"><UserRoundCheck className="mx-auto size-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">ยังไม่มีผู้ช่วยในสวนส่วนตัว</p><p className="mt-1 text-xs text-muted-foreground">งานส่วนตัวของคุณยังทำและปิดงานได้ด้วยตนเองจากหน้า "งานของฉัน"</p></Card>
-    </AppShell>;
-  }
-
-  if (persona.id === "employee") {
-    return <AppShell title="ทีมที่ฉันสังกัด" subtitle={`${workspaceLabel} · ดูข้อมูลทีมของตนเอง`}><Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">เห็นเฉพาะข้อมูลทีมของตนเอง</p><p className="mt-1 text-xs text-muted-foreground">บัญชีนี้เข้าถึงรายชื่อ เงินเดือน หรือการโยกย้ายบุคลากรทั้งองค์กรไม่ได้ ใช้หน้างานของฉันเพื่อรับงานและส่งงาน</p><Link to="/my-work" className="mt-3 block rounded-lg bg-primary py-2.5 text-center text-xs font-semibold text-primary-foreground">ไปงานของฉัน</Link></Card></AppShell>;
-  }
 
   return (
     <AppShell
