@@ -21,14 +21,12 @@ import {
   FolderOpen,
   Boxes,
   Wrench,
-  LockKeyhole,
   Crown,
 } from "lucide-react";
-import { AppShell, Badge, Card, SectionTitle } from "@/components/AppShell";
+import { AppShell, Card, SectionTitle } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useDragonflyData } from "@/hooks/useDragonflyData";
-import { ExperienceProgression } from "@/components/ExperienceProgression";
 
 export const Route = createFileRoute("/more")({
   head: () => ({
@@ -124,99 +122,75 @@ function getFeatureAudience(route: string) {
 
 function MorePage() {
   const {
-    persona,
-    state,
-    setPersona,
     workspaceContext,
     workspaceLabel,
     effectiveSubscription,
+    state,
   } = useDragonflyData();
-  const isBeginner = persona.profile.knowledgeLevel === "Beginner";
-  const hasPro = effectiveSubscription === "Farm Pro";
-  const isOrganizationEmployee = workspaceContext === "organization" && persona.id === "employee";
-  const employeeCoreRoutes = ["/academy", "/weather", "/market", "/disaster", "/monitor", "/calendar"];
-  const employeeTechRoutes = ["/notifications", "/community"];
+
   return (
     <AppShell
       title="เมนูทั้งหมด"
       subtitle={`${workspaceLabel} · ${effectiveSubscription}`}
     >
-      {workspaceContext === "personal" && persona.id !== "employee" ? (
-        <ExperienceProgression persona={persona} onAdvance={setPersona} />
-      ) : workspaceContext === "personal" ? (
-        <Card className="border-primary/25 bg-primary-soft/45"><p className="text-sm font-semibold text-primary">พื้นที่สวนส่วนตัว</p><p className="mt-1 text-xs text-muted-foreground">ข้อมูลที่แสดงเป็นของคุณเท่านั้น แยกจากงานและทีมขององค์กร</p></Card>
-      ) : (
-        <Card className="border-primary/25 bg-primary-soft/45">
-          <p className="text-sm font-semibold text-primary">กำลังใช้พื้นที่ขององค์กร</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            ข้อมูล งาน และคำสั่งในแต่ละหน้าจะเปลี่ยนตามพื้นที่ทำงานและทีมที่คุณสังกัด
-          </p>
-        </Card>
-      )}
-      <SectionTitle>{isOrganizationEmployee ? "งานภาคสนามของฉัน" : "งานของฉัน"}</SectionTitle>
+      <Card className="border-primary/25 bg-primary-soft/45">
+        <p className="text-sm font-semibold text-primary">
+          {workspaceContext === "organization" ? "กำลังใช้พื้นที่ขององค์กร" : "พื้นที่สวนส่วนตัว"}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {workspaceContext === "organization"
+            ? "ข้อมูล งาน และคำสั่งในแต่ละหน้าจะเปลี่ยนตามพื้นที่ทำงานและทีมที่คุณสังกัด"
+            : "ข้อมูลที่แสดงเป็นของคุณเท่านั้น แยกจากงานและทีมขององค์กร"}
+        </p>
+      </Card>
+      <SectionTitle>งานของฉัน</SectionTitle>
       <Link to="/my-work">
         <Card className="border-primary/30 bg-primary-soft/45">
           <ClipboardCheck className="size-6 text-primary" />
           <p className="mt-2 text-sm font-semibold">งานของฉัน</p>
           <p className="text-xs text-muted-foreground">
-            {isOrganizationEmployee
-              ? "เช็กอิน รับงาน ส่งงาน และรายงานอุปสรรค"
-              : "Todo ส่วนตัวที่สร้างจากปฏิทิน"}
+            Todo ส่วนตัวและงานที่สร้างจากปฏิทิน
           </p>
         </Card>
       </Link>
-      <SectionTitle>{isOrganizationEmployee ? "ทีมที่สังกัด" : "ทีมและสมาชิก"}</SectionTitle>
+      <SectionTitle>ทีมและสมาชิก</SectionTitle>
       <Link to="/workers">
         <Card className="border-primary/25 bg-primary-soft/45">
           <Users className="size-6 text-primary" />
           <p className="mt-2 text-sm font-semibold">สมาชิกและทีม</p>
           <p className="text-xs text-muted-foreground">
-            {isOrganizationEmployee ? "ดูขอบเขตทีมของตนเอง โดยไม่เปิดรายชื่อทั้งองค์กร" : "เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่รับผิดชอบ"}
+            เชิญสมาชิก กำหนดตำแหน่ง ทีม และพื้นที่รับผิดชอบ
           </p>
-          <p className="mt-2 text-[10px] font-semibold text-primary">เหมาะสำหรับ คนงาน · เจ้าของสวน · หัวหน้าทีม · ผู้จัดการ</p>
         </Card>
       </Link>
-      <SectionTitle>{isBeginner && workspaceContext === "personal" ? "เริ่มจัดการสวน" : "Smart Farming"}</SectionTitle>
+      <SectionTitle>Smart Farming</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
         {coreMenu.map((m) => {
-          const restricted = isOrganizationEmployee && !employeeCoreRoutes.includes(m.to);
-          const tile = <Card className={`h-full ${restricted ? "opacity-65" : ""}`}>
+          const tile = <Card className="h-full hover:border-primary/35 hover:bg-primary-soft/10 transition-colors">
               <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                {restricted ? <LockKeyhole className="size-5" /> : <m.icon className="size-5" strokeWidth={2} />}
+                <m.icon className="size-5" strokeWidth={2} />
               </span>
               <p className="mt-2 text-sm font-semibold">{m.label}</p>
               <p className="text-xs text-muted-foreground">{m.desc}</p>
-              <p className="mt-2 text-[10px] font-semibold text-primary">{restricted ? "ไม่มีสิทธิ์ในองค์กรนี้" : getFeatureAudience(m.to)}</p>
             </Card>;
-          return restricted ? <div key={m.to}>{tile}</div> : <Link key={m.to} to={m.to}>{tile}</Link>;
+          return <Link key={m.to} to={m.to} className="group block">{tile}</Link>;
         })}
       </div>
 
       <>
-          <SectionTitle>{hasPro ? "Farm Pro" : "เครื่องมือขั้นสูง"}</SectionTitle>
-          {!hasPro ? (
-            <Card className="border-primary/30 bg-primary-soft/50">
-              <p className="text-sm font-semibold text-primary">เครื่องมือสำหรับสวนเชิงพาณิชย์</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                ใช้เมื่อเริ่มมีหลายแปลง หลายคน หรืออยากควบคุมล็อตผลิตอย่างเป็นระบบ
-                ฟีเจอร์ถูกล็อกจนกว่าจะสมัคร Farm Pro
-              </p>
-            </Card>
-          ) : null}
+          <SectionTitle>เครื่องมือระดับสูง (Farm Pro)</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             {proMenu.map((m) => {
-              const restricted = isOrganizationEmployee || !hasPro;
-              const tile = <Card className={`h-full ${restricted ? "opacity-70" : ""}`}>
+              const tile = <Card className="h-full hover:border-primary/35 hover:bg-primary-soft/10 transition-colors">
                   <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                    {restricted ? <LockKeyhole className="size-5" /> : <m.icon className="size-5" strokeWidth={2} />}
+                    <m.icon className="size-5" strokeWidth={2} />
                   </span>
                   <p className="mt-2 text-sm font-semibold">{m.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    {isOrganizationEmployee ? `สิทธิ์พนักงานไม่ครอบคลุม · ${m.desc}` : hasPro ? m.desc : `ล็อกใน Farm Pro · ${m.desc}`}
+                    {m.desc}
                   </p>
-                  <p className="mt-2 text-[10px] font-semibold text-primary">{getFeatureAudience(m.to)}</p>
                 </Card>;
-              return restricted ? <div key={m.to}>{tile}</div> : <Link key={m.to} to={m.to}>{tile}</Link>;
+              return <Link key={m.to} to={m.to} className="group block">{tile}</Link>;
             })}
           </div>
         </>
@@ -224,16 +198,14 @@ function MorePage() {
       <SectionTitle>Technology & System</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
         {techMenu.map((m) => {
-          const restricted = isOrganizationEmployee && !employeeTechRoutes.includes(m.to);
-          const tile = <Card className={`h-full ${restricted ? "opacity-65" : ""}`}>
+          const tile = <Card className="h-full hover:border-primary/35 hover:bg-primary-soft/10 transition-colors">
               <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                {restricted ? <LockKeyhole className="size-5" /> : <m.icon className="size-5" strokeWidth={2} />}
+                <m.icon className="size-5" strokeWidth={2} />
               </span>
               <p className="mt-2 text-sm font-semibold">{m.label}</p>
               <p className="text-xs text-muted-foreground">{m.desc}</p>
-              <p className="mt-2 text-[10px] font-semibold text-primary">{restricted ? "ไม่มีสิทธิ์ในองค์กรนี้" : getFeatureAudience(m.to)}</p>
             </Card>;
-          return restricted ? <div key={m.to}>{tile}</div> : <Link key={m.to} to={m.to}>{tile}</Link>;
+          return <Link key={m.to} to={m.to} className="group block">{tile}</Link>;
         })}
       </div>
 

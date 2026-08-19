@@ -26,34 +26,31 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background">
       <div className="app-frame mx-auto flex min-h-screen w-full max-w-md flex-col bg-background md:max-w-6xl">
-        <WorkspaceContextSwitcher />
-        <header data-tour="app-shell-header" className="sticky top-0 z-20 border-b border-border/60 bg-card/88 px-5 pt-[max(1.1rem,env(safe-area-inset-top))] pb-3.5 text-foreground backdrop-blur-2xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <BrandMark
-                size="sm"
-                className="mt-0.5 bg-primary-soft text-primary shadow-none"
-              />
-              <div className="min-w-0">
-                <h1 className="font-display text-[1.3rem] font-semibold leading-tight">{title}</h1>
-                {subtitle ? (
-                  <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-                    {subtitle}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
+        <header data-tour="app-shell-header" className="sticky top-0 z-20 border-b border-border/60 bg-card/88 px-5 pt-[max(0.85rem,env(safe-area-inset-top))] pb-3 text-foreground backdrop-blur-2xl">
+          {/* แถวบน: Logo + Actions */}
+          <div className="flex items-center justify-between gap-2">
+            <BrandMark size="sm" className="bg-primary-soft text-primary shadow-none" />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <WorkspaceContextSwitcher />
               <ThemeToggle />
               <Link
                 to="/notifications"
-                className="relative flex size-10 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="relative flex size-9 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 aria-label="การแจ้งเตือน"
               >
-                <Bell className="size-5" />
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning" />
+                <Bell className="size-4.5" />
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-warning" />
               </Link>
             </div>
+          </div>
+          {/* แถวล่าง: Title + Subtitle */}
+          <div className="mt-2.5">
+            <h1 className="font-display text-xl font-bold leading-tight tracking-tight">{title}</h1>
+            {subtitle ? (
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground line-clamp-1">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
         </header>
 
